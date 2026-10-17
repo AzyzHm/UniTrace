@@ -6,6 +6,7 @@ const schema = Joi.object({
   LOG_LEVEL: Joi.string()
     .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent')
     .default('info'),
+  MONGODB_URI: Joi.string().uri({ scheme: ['mongodb', 'mongodb+srv'] }).required(),
 }).unknown(true);
 
 export function loadEnv(source = process.env) {
@@ -20,6 +21,7 @@ export function loadEnv(source = process.env) {
     nodeEnv: value.NODE_ENV,
     port: value.PORT,
     logLevel: value.LOG_LEVEL,
+    mongoUri: value.MONGODB_URI,
   });
 }
 
