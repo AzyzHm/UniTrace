@@ -9,6 +9,7 @@ const schema = Joi.object({
   MONGODB_URI: Joi.string()
     .uri({ scheme: ['mongodb', 'mongodb+srv'] })
     .required(),
+  ALLOWED_EMAIL_DOMAINS: Joi.string().default('isamm.uma.tn,isamm.u-manouba.tn'),
 }).unknown(true);
 
 export function loadEnv(source = process.env) {
@@ -24,6 +25,9 @@ export function loadEnv(source = process.env) {
     port: value.PORT,
     logLevel: value.LOG_LEVEL,
     mongoUri: value.MONGODB_URI,
+    allowedEmailDomains: value.ALLOWED_EMAIL_DOMAINS.split(',')
+      .map((domain) => domain.trim().toLowerCase())
+      .filter(Boolean),
   });
 }
 
