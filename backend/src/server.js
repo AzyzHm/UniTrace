@@ -6,7 +6,7 @@ import { connectDb, disconnectDb } from './db/connection.js';
 async function start() {
   await connectDb(env.mongoUri);
 
-  const app = createApp();
+  const app = createApp({ logger });
   const server = app.listen(env.port, () => {
     logger.info(`UniTrace API listening on port ${env.port} (${env.nodeEnv})`);
   });
