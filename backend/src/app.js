@@ -1,6 +1,10 @@
 import express from 'express';
+import { notFoundHandler } from './middlewares/not-found.js';
+import { createErrorHandler } from './middlewares/error-handler.js';
 
-export function createApp() {
+const silentLogger = { error() {}, warn() {}, info() {}, debug() {} };
+
+export function createApp({ logger = silentLogger } = {}) {
   const app = express();
 
   app.use(express.json({ limit: '10kb' }));
@@ -8,6 +12,9 @@ export function createApp() {
   app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok' });
   });
+
+  app.use(notFoundHandler);
+  app.use(createErrorHandler({ logger }));
 
   return app;
 }
