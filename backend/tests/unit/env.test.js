@@ -22,4 +22,18 @@ describe('loadEnv', () => {
   it('reports every problem at once', () => {
     expect(() => loadEnv({ PORT: 'abc' })).toThrow(/PORT[\s\S]*MONGODB_URI/);
   });
+
+  it('defaults to the isamm email domains', () => {
+    const env = loadEnv(valid);
+    expect(env.allowedEmailDomains).toEqual(['isamm.uma.tn', 'isamm.u-manouba.tn']);
+  });
+
+  it('parses a custom domain list, trimmed and lowercased', () => {
+    const env = loadEnv({ ...valid, ALLOWED_EMAIL_DOMAINS: ' Univ.DZ , other.edu ' });
+    expect(env.allowedEmailDomains).toEqual(['univ.dz', 'other.edu']);
+  });
+
+  it('rejects an empty domain list, which would block every signup', () => {
+    expect(() => loadEnv({ ...valid, ALLOWED_EMAIL_DOMAINS: '' })).toThrow(/ALLOWED_EMAIL_DOMAINS/);
+  });
 });

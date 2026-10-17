@@ -64,9 +64,6 @@ userSchema.index({ email: 1 }, { unique: true });
 
 // strength 2 makes "Sara.K" and "sara.k" the same username, while we still
 // keep the casing the user typed for display.
-userSchema.index(
-  { username: 1 },
-  { unique: true, collation: { locale: 'en', strength: 2 } },
-);
+userSchema.index({ username: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
 
 export const User = mongoose.model('User', userSchema);
