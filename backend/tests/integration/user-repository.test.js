@@ -5,11 +5,13 @@ import { User } from '../../src/models/user.model.js';
 import { createUserRepository } from '../../src/repositories/user.repository.js';
 import { clearTestDb, connectTestDb, disconnectTestDb } from '../helpers/test-db.js';
 
+const HASH = '$2b$04$fakehashfakehashfakehashfakehashfakehashfakehashfak';
+
 function buildUser(overrides = {}) {
   return {
     username: 'sara.k',
     email: 'sara@isamm.uma.tn',
-    password: '$2b$04$fakehashfakehashfakehashfakehashfakehashfakehashfak',
+    password: HASH,
     ...overrides,
   };
 }
@@ -58,6 +60,21 @@ describe('user repository', () => {
     await expect(repository.create({})).rejects.toMatchObject({ name: 'ValidationError' });
   });
 
+  describe('findById', () => {
+    it('finds the user, without the password hash', async () => {
+      const created = await repository.create(buildUser());
+
+      const found = await repository.findById(created._id);
+
+      expect(found.email).toBe('sara@isamm.uma.tn');
+      expect(found.password).toBeUndefined();
+    });
+
+    it('returns null for an unknown id', async () => {
+      expect(await repository.findById(new mongoose.Types.ObjectId())).toBeNull();
+    });
+  });
+
   describe('findByEmail', () => {
     it('finds the user by email', async () => {
       const created = await repository.create(buildUser());
@@ -77,6 +94,20 @@ describe('user repository', () => {
       const found = await repository.findByEmail('sara@isamm.uma.tn');
 
       expect(found.password).toBeUndefined();
+    });
+  });
+
+  describe('findByEmailWithPassword', () => {
+    it('loads the password hash', async () => {
+      await repository.create(buildUser());
+
+      const found = await repository.findByEmailWithPassword('sara@isamm.uma.tn');
+
+      expect(found.password).toBe(HASH);
+    });
+
+    it('returns null for an unknown email', async () => {
+      expect(await repository.findByEmailWithPassword('nobody@isamm.uma.tn')).toBeNull();
     });
   });
 

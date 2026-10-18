@@ -24,8 +24,18 @@ export function createUserRepository({ model = User } = {}) {
       }
     },
 
+    findById(id) {
+      return model.findById(id);
+    },
+
     findByEmail(email) {
       return model.findOne({ email });
+    },
+
+    // The only query that loads the hash, and only the login path uses it.
+    // Every other read keeps the "select: false" protection of the model.
+    findByEmailWithPassword(email) {
+      return model.findOne({ email }).select('+password');
     },
 
     // The filter makes the flip atomic and idempotent: it matches only a
