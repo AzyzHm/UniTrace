@@ -1,8 +1,10 @@
 import Joi from 'joi';
+import { CODE_LENGTH } from '../constants/verification-code.js';
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_.]+$/;
 const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
 const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).+$/;
+const CODE_PATTERN = new RegExp(`^\\d{${CODE_LENGTH}}$`);
 const emailFormat = Joi.string().email();
 
 // Exact match on the part after the LAST "@". endsWith would accept
@@ -51,3 +53,23 @@ export function createRegisterSchema({ allowedEmailDomains }) {
       .messages({ 'any.only': 'Passwords do not match' }),
   });
 }
+
+// No domain check here: an address outside the allowed domains has no account,
+// so it simply finds nothing. Only the format matters, to stop junk early.
+const emailField = () => Joi.string().trim().lowercase().email().required();
+
+export const verifyEmailSchema = Joi.object({
+  email: emailField(),
+  // A string, so a leading zero survives ("012345" must not become 12345).
+  code: Joi.string()
+    .trim()
+    .pattern(CODE_PATTERN)
+    .required()
+    .messages({
+      'string.pattern.base': `Code must be ${CODE_LENGTH} digits`,
+    }),
+});
+
+export const resendVerificationSchema = Joi.object({
+  email: emailField(),
+});

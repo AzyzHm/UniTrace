@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ConflictError } from '../../src/exceptions/app-error.js';
 import { User } from '../../src/models/user.model.js';
@@ -55,5 +56,49 @@ describe('user repository', () => {
 
   it('lets other errors through untouched', async () => {
     await expect(repository.create({})).rejects.toMatchObject({ name: 'ValidationError' });
+  });
+
+  describe('findByEmail', () => {
+    it('finds the user by email', async () => {
+      const created = await repository.create(buildUser());
+
+      const found = await repository.findByEmail('sara@isamm.uma.tn');
+
+      expect(String(found._id)).toBe(String(created._id));
+    });
+
+    it('returns null for an unknown email', async () => {
+      expect(await repository.findByEmail('nobody@isamm.uma.tn')).toBeNull();
+    });
+
+    it('does not load the password hash', async () => {
+      await repository.create(buildUser());
+
+      const found = await repository.findByEmail('sara@isamm.uma.tn');
+
+      expect(found.password).toBeUndefined();
+    });
+  });
+
+  describe('markEmailVerified', () => {
+    it('flips the flag and returns the updated user', async () => {
+      const created = await repository.create(buildUser());
+
+      const updated = await repository.markEmailVerified(created._id);
+
+      expect(updated.isEmailVerified).toBe(true);
+      expect((await User.findById(created._id)).isEmailVerified).toBe(true);
+    });
+
+    it('returns null when the user is already verified', async () => {
+      const created = await repository.create(buildUser());
+      await repository.markEmailVerified(created._id);
+
+      expect(await repository.markEmailVerified(created._id)).toBeNull();
+    });
+
+    it('returns null for an unknown id', async () => {
+      expect(await repository.markEmailVerified(new mongoose.Types.ObjectId())).toBeNull();
+    });
   });
 });
