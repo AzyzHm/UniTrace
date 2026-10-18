@@ -37,3 +37,35 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...valid, ALLOWED_EMAIL_DOMAINS: '' })).toThrow(/ALLOWED_EMAIL_DOMAINS/);
   });
 });
+
+describe('agentmail config', () => {
+  it('is optional outside production', () => {
+    expect(loadEnv(valid).agentmail).toEqual({ apiKey: null, inboxId: null });
+  });
+
+  it('reads both values', () => {
+    const env = loadEnv({
+      ...valid,
+      AGENTMAIL_API_KEY: 'am_test_key',
+      AGENTMAIL_INBOX_ID: 'unitrace@agentmail.to',
+    });
+    expect(env.agentmail).toEqual({ apiKey: 'am_test_key', inboxId: 'unitrace@agentmail.to' });
+  });
+
+  it('treats a blank value as missing', () => {
+    const env = loadEnv({ ...valid, AGENTMAIL_API_KEY: '', AGENTMAIL_INBOX_ID: '' });
+    expect(env.agentmail).toEqual({ apiKey: null, inboxId: null });
+  });
+
+  it('is required in production, and reports both keys', () => {
+    expect(() => loadEnv({ ...valid, NODE_ENV: 'production' })).toThrow(
+      /AGENTMAIL_API_KEY[\s\S]*AGENTMAIL_INBOX_ID/,
+    );
+  });
+
+  it('rejects an inbox id that is not an email address', () => {
+    expect(() => loadEnv({ ...valid, AGENTMAIL_INBOX_ID: 'not-an-email' })).toThrow(
+      /AGENTMAIL_INBOX_ID/,
+    );
+  });
+});

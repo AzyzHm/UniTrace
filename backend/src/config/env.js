@@ -10,6 +10,14 @@ const schema = Joi.object({
     .uri({ scheme: ['mongodb', 'mongodb+srv'] })
     .required(),
   ALLOWED_EMAIL_DOMAINS: Joi.string().default('isamm.uma.tn,isamm.u-manouba.tn'),
+  AGENTMAIL_API_KEY: Joi.string().empty('').when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+  }),
+  AGENTMAIL_INBOX_ID: Joi.string().email().empty('').when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+  }),
 }).unknown(true);
 
 export function loadEnv(source = process.env) {
@@ -28,6 +36,10 @@ export function loadEnv(source = process.env) {
     allowedEmailDomains: value.ALLOWED_EMAIL_DOMAINS.split(',')
       .map((domain) => domain.trim().toLowerCase())
       .filter(Boolean),
+    agentmail: {
+      apiKey: value.AGENTMAIL_API_KEY ?? null,
+      inboxId: value.AGENTMAIL_INBOX_ID ?? null,
+    },
   });
 }
 
