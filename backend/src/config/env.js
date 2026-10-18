@@ -28,6 +28,22 @@ const schema = Joi.object({
       then: Joi.required(),
       otherwise: Joi.any().default('dev-only-code-hash-secret-change-me'),
     }),
+  // Signs every access token. Whoever knows it can forge a login as anyone,
+  // so production must set its own, and 32 characters is the HS256 minimum.
+  JWT_ACCESS_SECRET: Joi.string()
+    .empty('')
+    .min(32)
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.required(),
+      otherwise: Joi.any().default('dev-only-jwt-access-secret-change-me'),
+    }),
+  // A number and a unit (s, m, h, d), for example 15m. Short on purpose: an
+  // access token cannot be revoked, so it must expire quickly.
+  JWT_ACCESS_EXPIRES: Joi.string()
+    .empty('')
+    .pattern(/^\d+[smhd]$/)
+    .default('15m'),
 }).unknown(true);
 
 export function loadEnv(source = process.env) {
@@ -51,6 +67,10 @@ export function loadEnv(source = process.env) {
       inboxId: value.AGENTMAIL_INBOX_ID ?? null,
     },
     codeHashSecret: value.CODE_HASH_SECRET,
+    jwt: {
+      accessSecret: value.JWT_ACCESS_SECRET,
+      accessExpires: value.JWT_ACCESS_EXPIRES,
+    },
   });
 }
 

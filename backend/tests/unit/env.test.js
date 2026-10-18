@@ -76,6 +76,7 @@ describe('code hash secret', () => {
     NODE_ENV: 'production',
     AGENTMAIL_API_KEY: 'am_test_key',
     AGENTMAIL_INBOX_ID: 'unitrace@agentmail.to',
+    JWT_ACCESS_SECRET: 'j'.repeat(32),
   };
 
   it('falls back to a dev secret outside production', () => {
@@ -96,5 +97,47 @@ describe('code hash secret', () => {
     const env = loadEnv({ ...production, CODE_HASH_SECRET: 'x'.repeat(32) });
 
     expect(env.codeHashSecret).toBe('x'.repeat(32));
+  });
+});
+
+describe('jwt config', () => {
+  const production = {
+    ...valid,
+    NODE_ENV: 'production',
+    AGENTMAIL_API_KEY: 'am_test_key',
+    AGENTMAIL_INBOX_ID: 'unitrace@agentmail.to',
+    CODE_HASH_SECRET: 'x'.repeat(32),
+  };
+
+  it('falls back to a dev secret and a 15 minute lifetime outside production', () => {
+    expect(loadEnv(valid).jwt).toEqual({
+      accessSecret: expect.any(String),
+      accessExpires: '15m',
+    });
+  });
+
+  it('requires the secret in production', () => {
+    expect(() => loadEnv(production)).toThrow(/JWT_ACCESS_SECRET/);
+  });
+
+  it('must be at least 32 characters', () => {
+    expect(() => loadEnv({ ...production, JWT_ACCESS_SECRET: 'too-short' })).toThrow(
+      /JWT_ACCESS_SECRET/,
+    );
+  });
+
+  it('accepts a strong secret in production', () => {
+    const env = loadEnv({ ...production, JWT_ACCESS_SECRET: 'j'.repeat(32) });
+
+    expect(env.jwt.accessSecret).toBe('j'.repeat(32));
+  });
+
+  it('accepts a custom lifetime and treats a blank one as the default', () => {
+    expect(loadEnv({ ...valid, JWT_ACCESS_EXPIRES: '30m' }).jwt.accessExpires).toBe('30m');
+    expect(loadEnv({ ...valid, JWT_ACCESS_EXPIRES: '' }).jwt.accessExpires).toBe('15m');
+  });
+
+  it.each(['15', 'abc', '15 m', '-5m', '1.5h'])('rejects the lifetime "%s"', (lifetime) => {
+    expect(() => loadEnv({ ...valid, JWT_ACCESS_EXPIRES: lifetime })).toThrow(/JWT_ACCESS_EXPIRES/);
   });
 });
