@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { createAuthController } from '../controllers/auth.controller.js';
-import { createRegisterSchema } from '../validators/auth.validator.js';
+import {
+  createRegisterSchema,
+  resendVerificationSchema,
+  verifyEmailSchema,
+} from '../validators/auth.validator.js';
 import { createAuthRoutes } from './auth.routes.js';
 
 // Only mounts what it receives, so tests that do not need a database
@@ -14,6 +18,8 @@ export function createApiRouter({ authService, allowedEmailDomains = [] } = {}) 
       createAuthRoutes({
         authController: createAuthController({ authService }),
         registerSchema: createRegisterSchema({ allowedEmailDomains }),
+        verifyEmailSchema,
+        resendVerificationSchema,
       }),
     );
   }
