@@ -4,9 +4,11 @@ import { logger } from './config/logger.js';
 import { connectDb, disconnectDb } from './db/connection.js';
 
 import { createRequireAuth } from './middlewares/require-auth.js';
+import { createRefreshTokenRepository } from './repositories/refresh-token.repository.js';
 import { createUserRepository } from './repositories/user.repository.js';
 import { createPasswordHasher } from './services/password-hasher.js';
 import { createAuthService } from './services/auth.service.js';
+import { createRefreshTokenHasher } from './services/refresh-token-hasher.js';
 import { createSessionService } from './services/session.service.js';
 import { createTokenService } from './services/token.service.js';
 import { createVerificationCodeRepository } from './repositories/verification-code.repository.js';
@@ -46,7 +48,14 @@ async function start() {
     logger,
   });
 
-  const sessionService = createSessionService({ userRepository, passwordHasher, tokenService });
+  const sessionService = createSessionService({
+    userRepository,
+    passwordHasher,
+    tokenService,
+    refreshTokenRepository: createRefreshTokenRepository(),
+    refreshTokenHasher: createRefreshTokenHasher(),
+    logger,
+  });
   const requireAuth = createRequireAuth({ tokenService, userRepository });
 
   const app = createApp({
@@ -55,6 +64,7 @@ async function start() {
     sessionService,
     requireAuth,
     allowedEmailDomains: env.allowedEmailDomains,
+    secureCookies: env.nodeEnv === 'production',
   });
   const server = app.listen(env.port, () => {
     logger.info(`UniTrace API listening on port ${env.port} (${env.nodeEnv})`);

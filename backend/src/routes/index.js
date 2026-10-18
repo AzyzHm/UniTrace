@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { createAuthController } from '../controllers/auth.controller.js';
 import { createUserController } from '../controllers/user.controller.js';
+import { createRefreshCookie } from '../utils/refresh-cookie.js';
 import {
   createRegisterSchema,
   loginSchema,
@@ -17,6 +18,7 @@ export function createApiRouter({
   sessionService,
   requireAuth,
   allowedEmailDomains = [],
+  secureCookies = false,
 } = {}) {
   const router = Router();
 
@@ -24,7 +26,11 @@ export function createApiRouter({
     router.use(
       '/auth',
       createAuthRoutes({
-        authController: createAuthController({ authService, sessionService }),
+        authController: createAuthController({
+          authService,
+          sessionService,
+          refreshCookie: createRefreshCookie({ secure: secureCookies }),
+        }),
         registerSchema: createRegisterSchema({ allowedEmailDomains }),
         verifyEmailSchema,
         resendVerificationSchema,

@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import express from 'express';
 import { notFoundHandler } from './middlewares/not-found.js';
 import { createErrorHandler } from './middlewares/error-handler.js';
@@ -11,10 +12,12 @@ export function createApp({
   sessionService,
   requireAuth,
   allowedEmailDomains,
+  secureCookies = false,
 } = {}) {
   const app = express();
 
   app.use(express.json({ limit: '10kb' }));
+  app.use(cookieParser());
 
   app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok' });
@@ -22,7 +25,13 @@ export function createApp({
 
   app.use(
     '/api/v1',
-    createApiRouter({ authService, sessionService, requireAuth, allowedEmailDomains }),
+    createApiRouter({
+      authService,
+      sessionService,
+      requireAuth,
+      allowedEmailDomains,
+      secureCookies,
+    }),
   );
 
   app.use(notFoundHandler);

@@ -1,11 +1,13 @@
 import { vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { createRequireAuth } from '../../src/middlewares/require-auth.js';
+import { createRefreshTokenRepository } from '../../src/repositories/refresh-token.repository.js';
 import { createUserRepository } from '../../src/repositories/user.repository.js';
 import { createVerificationCodeRepository } from '../../src/repositories/verification-code.repository.js';
 import { createAuthService } from '../../src/services/auth.service.js';
 import { createCodeHasher } from '../../src/services/code-hasher.js';
 import { createPasswordHasher } from '../../src/services/password-hasher.js';
+import { createRefreshTokenHasher } from '../../src/services/refresh-token-hasher.js';
 import { createSessionService } from '../../src/services/session.service.js';
 import { createTokenService } from '../../src/services/token.service.js';
 import { createVerificationCodeService } from '../../src/services/verification-code.service.js';
@@ -40,7 +42,14 @@ export function buildTestApp() {
 
   const app = createApp({
     authService: createAuthService({ userRepository, passwordHasher, verificationCodeService }),
-    sessionService: createSessionService({ userRepository, passwordHasher, tokenService }),
+    sessionService: createSessionService({
+      userRepository,
+      passwordHasher,
+      tokenService,
+      refreshTokenRepository: createRefreshTokenRepository(),
+      refreshTokenHasher: createRefreshTokenHasher(),
+      clock,
+    }),
     requireAuth: createRequireAuth({ tokenService, userRepository }),
     allowedEmailDomains: ['isamm.uma.tn'],
   });
