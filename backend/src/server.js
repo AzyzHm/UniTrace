@@ -3,10 +3,22 @@ import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { connectDb, disconnectDb } from './db/connection.js';
 
+import { createUserRepository } from './repositories/user.repository.js';
+import { createPasswordHasher } from './services/password-hasher.js';
+import { createAuthService } from './services/auth.service.js';
+
 async function start() {
   await connectDb(env.mongoUri);
 
-  const app = createApp({ logger });
+  const userRepository = createUserRepository();
+  const passwordHasher = createPasswordHasher();
+  const authService = createAuthService({ userRepository, passwordHasher });
+
+  const app = createApp({
+    logger,
+    authService,
+    allowedEmailDomains: env.allowedEmailDomains,
+  });
   const server = app.listen(env.port, () => {
     logger.info(`UniTrace API listening on port ${env.port} (${env.nodeEnv})`);
   });

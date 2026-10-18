@@ -1,0 +1,59 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { ConflictError } from '../../src/exceptions/app-error.js';
+import { User } from '../../src/models/user.model.js';
+import { createUserRepository } from '../../src/repositories/user.repository.js';
+import { clearTestDb, connectTestDb, disconnectTestDb } from '../helpers/test-db.js';
+
+function buildUser(overrides = {}) {
+  return {
+    username: 'sara.k',
+    email: 'sara@isamm.uma.tn',
+    password: '$2b$04$fakehashfakehashfakehashfakehashfakehashfakehashfak',
+    ...overrides,
+  };
+}
+
+describe('user repository', () => {
+  const repository = createUserRepository();
+
+  beforeAll(async () => {
+    await connectTestDb();
+    await User.init();
+  });
+
+  afterAll(disconnectTestDb);
+  beforeEach(clearTestDb);
+
+  it('creates a user', async () => {
+    const user = await repository.create(buildUser());
+
+    expect(user.id).toBeDefined();
+    expect(user.email).toBe('sara@isamm.uma.tn');
+  });
+
+  it('turns a duplicate email into a ConflictError naming the field', async () => {
+    await repository.create(buildUser());
+
+    const error = await repository
+      .create(buildUser({ username: 'other.user' }))
+      .catch((err) => err);
+
+    expect(error).toBeInstanceOf(ConflictError);
+    expect(error.details).toEqual([{ field: 'email', message: 'Email is already used' }]);
+  });
+
+  it('turns a duplicate username into a ConflictError, ignoring case', async () => {
+    await repository.create(buildUser({ username: 'Sara.K' }));
+
+    const error = await repository
+      .create(buildUser({ username: 'sara.k', email: 'other@isamm.uma.tn' }))
+      .catch((err) => err);
+
+    expect(error).toBeInstanceOf(ConflictError);
+    expect(error.details).toEqual([{ field: 'username', message: 'Username is already taken' }]);
+  });
+
+  it('lets other errors through untouched', async () => {
+    await expect(repository.create({})).rejects.toMatchObject({ name: 'ValidationError' });
+  });
+});

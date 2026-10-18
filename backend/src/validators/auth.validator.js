@@ -33,24 +33,15 @@ export function createRegisterSchema({ allowedEmailDomains }) {
       })
       .messages({ 'domain.notAllowed': 'Please use your university email address' }),
 
-    phone: Joi.string()
-      .trim()
-      .pattern(PHONE_PATTERN)
-      .optional()
-      .messages({
-        'string.pattern.base': 'Phone must be 8 to 15 digits, optionally starting with "+"',
-      }),
+    phone: Joi.string().trim().pattern(PHONE_PATTERN).optional().messages({
+      'string.pattern.base': 'Phone must be 8 to 15 digits, optionally starting with "+"',
+    }),
 
     // Max 72: bcrypt silently ignores everything after 72 bytes, so a longer
     // limit would give a false sense of security.
-    password: Joi.string()
-      .min(8)
-      .max(72)
-      .pattern(PASSWORD_PATTERN)
-      .required()
-      .messages({
-        'string.pattern.base': 'Password must contain at least one letter and one digit',
-      }),
+    password: Joi.string().min(8).max(72).pattern(PASSWORD_PATTERN).required().messages({
+      'string.pattern.base': 'Password must contain at least one letter and one digit',
+    }),
 
     // .strip() removes it from the validated value, so the service never sees it.
     confirmPassword: Joi.any()
