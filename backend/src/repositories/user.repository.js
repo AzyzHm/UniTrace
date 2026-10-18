@@ -23,5 +23,19 @@ export function createUserRepository({ model = User } = {}) {
         throw err;
       }
     },
+
+    findByEmail(email) {
+      return model.findOne({ email });
+    },
+
+    // The filter makes the flip atomic and idempotent: it matches only a
+    // user who is still unverified, and returns null otherwise.
+    markEmailVerified(id) {
+      return model.findOneAndUpdate(
+        { _id: id, isEmailVerified: false },
+        { $set: { isEmailVerified: true } },
+        { returnDocument: 'after' },
+      );
+    },
   };
 }
