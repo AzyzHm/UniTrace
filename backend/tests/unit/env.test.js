@@ -69,3 +69,32 @@ describe('agentmail config', () => {
     );
   });
 });
+
+describe('code hash secret', () => {
+  const production = {
+    ...valid,
+    NODE_ENV: 'production',
+    AGENTMAIL_API_KEY: 'am_test_key',
+    AGENTMAIL_INBOX_ID: 'unitrace@agentmail.to',
+  };
+
+  it('falls back to a dev secret outside production', () => {
+    expect(loadEnv(valid).codeHashSecret).toBeTruthy();
+  });
+
+  it('is required in production', () => {
+    expect(() => loadEnv(production)).toThrow(/CODE_HASH_SECRET/);
+  });
+
+  it('must be at least 32 characters', () => {
+    expect(() => loadEnv({ ...production, CODE_HASH_SECRET: 'too-short' })).toThrow(
+      /CODE_HASH_SECRET/,
+    );
+  });
+
+  it('accepts a strong secret in production', () => {
+    const env = loadEnv({ ...production, CODE_HASH_SECRET: 'x'.repeat(32) });
+
+    expect(env.codeHashSecret).toBe('x'.repeat(32));
+  });
+});

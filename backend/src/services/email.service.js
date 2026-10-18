@@ -1,8 +1,8 @@
 import { CODE_PURPOSES } from '../constants/code-purposes.js';
+import { CODE_TTL_MINUTES as DEFAULT_TTL_MINUTES } from '../constants/verification-code.js';
 
 const DEFAULT_BASE_URL = 'https://api.agentmail.to/v0';
 const DEFAULT_TIMEOUT_MS = 10_000;
-const DEFAULT_TTL_MINUTES = 10;
 
 // Not an AppError on purpose: the error handler turns it into a generic 500
 // and logs it, so provider details never reach the client.

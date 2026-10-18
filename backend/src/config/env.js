@@ -18,6 +18,16 @@ const schema = Joi.object({
     is: 'production',
     then: Joi.required(),
   }),
+  // Signs the stored hash of every verification code, so a leaked database
+  // cannot be used to brute-force the 1,000,000 possible codes offline.
+  CODE_HASH_SECRET: Joi.string()
+    .empty('')
+    .min(32)
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.required(),
+      otherwise: Joi.any().default('dev-only-code-hash-secret-change-me'),
+    }),
 }).unknown(true);
 
 export function loadEnv(source = process.env) {
@@ -40,6 +50,7 @@ export function loadEnv(source = process.env) {
       apiKey: value.AGENTMAIL_API_KEY ?? null,
       inboxId: value.AGENTMAIL_INBOX_ID ?? null,
     },
+    codeHashSecret: value.CODE_HASH_SECRET,
   });
 }
 
