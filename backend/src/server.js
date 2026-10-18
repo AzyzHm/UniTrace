@@ -6,13 +6,37 @@ import { connectDb, disconnectDb } from './db/connection.js';
 import { createUserRepository } from './repositories/user.repository.js';
 import { createPasswordHasher } from './services/password-hasher.js';
 import { createAuthService } from './services/auth.service.js';
+import { createVerificationCodeRepository } from './repositories/verification-code.repository.js';
+import { createCodeHasher } from './services/code-hasher.js';
+import { createConsoleEmailService, createEmailService } from './services/email.service.js';
+import { createVerificationCodeService } from './services/verification-code.service.js';
 
 async function start() {
   await connectDb(env.mongoUri);
 
   const userRepository = createUserRepository();
   const passwordHasher = createPasswordHasher();
-  const authService = createAuthService({ userRepository, passwordHasher });
+  const { apiKey, inboxId } = env.agentmail;
+  const emailService =
+    apiKey && inboxId
+      ? createEmailService({ apiKey, inboxId })
+      : createConsoleEmailService({ logger });
+  if (!apiKey || !inboxId) {
+    logger.warn('AgentMail is not configured: verification codes are logged, not emailed');
+  }
+
+  const verificationCodeService = createVerificationCodeService({
+    codeRepository: createVerificationCodeRepository(),
+    codeHasher: createCodeHasher({ secret: env.codeHashSecret }),
+    emailService,
+  });
+
+  const authService = createAuthService({
+    userRepository,
+    passwordHasher,
+    verificationCodeService,
+    logger,
+  });
 
   const app = createApp({
     logger,
