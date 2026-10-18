@@ -37,3 +37,64 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...valid, ALLOWED_EMAIL_DOMAINS: '' })).toThrow(/ALLOWED_EMAIL_DOMAINS/);
   });
 });
+
+describe('agentmail config', () => {
+  it('is optional outside production', () => {
+    expect(loadEnv(valid).agentmail).toEqual({ apiKey: null, inboxId: null });
+  });
+
+  it('reads both values', () => {
+    const env = loadEnv({
+      ...valid,
+      AGENTMAIL_API_KEY: 'am_test_key',
+      AGENTMAIL_INBOX_ID: 'unitrace@agentmail.to',
+    });
+    expect(env.agentmail).toEqual({ apiKey: 'am_test_key', inboxId: 'unitrace@agentmail.to' });
+  });
+
+  it('treats a blank value as missing', () => {
+    const env = loadEnv({ ...valid, AGENTMAIL_API_KEY: '', AGENTMAIL_INBOX_ID: '' });
+    expect(env.agentmail).toEqual({ apiKey: null, inboxId: null });
+  });
+
+  it('is required in production, and reports both keys', () => {
+    expect(() => loadEnv({ ...valid, NODE_ENV: 'production' })).toThrow(
+      /AGENTMAIL_API_KEY[\s\S]*AGENTMAIL_INBOX_ID/,
+    );
+  });
+
+  it('rejects an inbox id that is not an email address', () => {
+    expect(() => loadEnv({ ...valid, AGENTMAIL_INBOX_ID: 'not-an-email' })).toThrow(
+      /AGENTMAIL_INBOX_ID/,
+    );
+  });
+});
+
+describe('code hash secret', () => {
+  const production = {
+    ...valid,
+    NODE_ENV: 'production',
+    AGENTMAIL_API_KEY: 'am_test_key',
+    AGENTMAIL_INBOX_ID: 'unitrace@agentmail.to',
+  };
+
+  it('falls back to a dev secret outside production', () => {
+    expect(loadEnv(valid).codeHashSecret).toBeTruthy();
+  });
+
+  it('is required in production', () => {
+    expect(() => loadEnv(production)).toThrow(/CODE_HASH_SECRET/);
+  });
+
+  it('must be at least 32 characters', () => {
+    expect(() => loadEnv({ ...production, CODE_HASH_SECRET: 'too-short' })).toThrow(
+      /CODE_HASH_SECRET/,
+    );
+  });
+
+  it('accepts a strong secret in production', () => {
+    const env = loadEnv({ ...production, CODE_HASH_SECRET: 'x'.repeat(32) });
+
+    expect(env.codeHashSecret).toBe('x'.repeat(32));
+  });
+});

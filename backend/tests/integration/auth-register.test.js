@@ -1,10 +1,15 @@
 import request from 'supertest';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { User } from '../../src/models/user.model.js';
+import { VerificationCode } from '../../src/models/verification-code.model.js';
 import { createUserRepository } from '../../src/repositories/user.repository.js';
+import { createVerificationCodeRepository } from '../../src/repositories/verification-code.repository.js';
 import { createAuthService } from '../../src/services/auth.service.js';
+import { createCodeHasher } from '../../src/services/code-hasher.js';
+import { EmailDeliveryError } from '../../src/services/email.service.js';
 import { createPasswordHasher } from '../../src/services/password-hasher.js';
+import { createVerificationCodeService } from '../../src/services/verification-code.service.js';
 import { clearTestDb, connectTestDb, disconnectTestDb } from '../helpers/test-db.js';
 
 const URL = '/api/v1/auth/register';
@@ -23,14 +28,29 @@ function buildBody(overrides = {}) {
 describe('POST /api/v1/auth/register', () => {
   let app;
 
+  // Only the email sender is fake. The code repository, hasher and service
+  // are the real ones, running on the in-memory database.
+  const emailService = {
+    sendVerificationCode: vi.fn(),
+    sendPasswordResetCode: vi.fn(),
+  };
+
   beforeAll(async () => {
     await connectTestDb();
     await User.init();
+    await VerificationCode.init();
+
+    const verificationCodeService = createVerificationCodeService({
+      codeRepository: createVerificationCodeRepository(),
+      codeHasher: createCodeHasher({ secret: 'a'.repeat(32) }),
+      emailService,
+    });
 
     app = createApp({
       authService: createAuthService({
         userRepository: createUserRepository(),
         passwordHasher: createPasswordHasher({ cost: 4 }),
+        verificationCodeService,
       }),
       allowedEmailDomains: ['isamm.uma.tn'],
     });
@@ -38,6 +58,11 @@ describe('POST /api/v1/auth/register', () => {
 
   afterAll(disconnectTestDb);
   beforeEach(clearTestDb);
+
+  beforeEach(() => {
+    emailService.sendVerificationCode.mockReset();
+    emailService.sendVerificationCode.mockResolvedValue(undefined);
+  });
 
   it('creates an unverified user and answers 201 with a safe shape', async () => {
     const res = await request(app).post(URL).send(buildBody());
@@ -143,5 +168,56 @@ describe('POST /api/v1/auth/register', () => {
 
     expect([first.status, second.status].sort()).toEqual([201, 409]);
     expect(await User.countDocuments()).toBe(1);
+  });
+
+  describe('verification code', () => {
+    it('emails a 6 digit code and stores only its hash, linked to the new user', async () => {
+      const res = await request(app).post(URL).send(buildBody());
+
+      expect(emailService.sendVerificationCode).toHaveBeenCalledTimes(1);
+      const [to, code] = emailService.sendVerificationCode.mock.calls[0];
+      expect(to).toBe('sara@isamm.uma.tn');
+      expect(code).toMatch(/^\d{6}$/);
+
+      const stored = await VerificationCode.findOne();
+      expect(String(stored.user)).toBe(res.body.user.id);
+      expect(stored.purpose).toBe('email_verification');
+      expect(stored.codeHash).not.toContain(code);
+      expect(res.body.code).toBeUndefined();
+    });
+
+    it('still answers 201 and keeps the account when the email cannot be delivered', async () => {
+      emailService.sendVerificationCode.mockRejectedValueOnce(new EmailDeliveryError('down'));
+
+      const res = await request(app).post(URL).send(buildBody());
+
+      expect(res.status).toBe(201);
+      expect(await User.countDocuments()).toBe(1);
+      // The unsent code is removed, so the user can ask for a new one at once.
+      expect(await VerificationCode.countDocuments()).toBe(0);
+    });
+
+    it('sends no second email for a refused duplicate registration', async () => {
+      await request(app).post(URL).send(buildBody());
+      emailService.sendVerificationCode.mockClear();
+
+      const res = await request(app)
+        .post(URL)
+        .send(buildBody({ username: 'other.user' }));
+
+      expect(res.status).toBe(409);
+      expect(emailService.sendVerificationCode).not.toHaveBeenCalled();
+      expect(await VerificationCode.countDocuments()).toBe(1);
+    });
+
+    it('sends exactly one email when two identical registrations race', async () => {
+      await Promise.all([
+        request(app).post(URL).send(buildBody()),
+        request(app).post(URL).send(buildBody()),
+      ]);
+
+      expect(emailService.sendVerificationCode).toHaveBeenCalledTimes(1);
+      expect(await VerificationCode.countDocuments()).toBe(1);
+    });
   });
 });

@@ -5,8 +5,9 @@ import { createAuthService } from '../../src/services/auth.service.js';
 function setup() {
   const userRepository = { create: vi.fn(async (data) => ({ id: 'u1', ...data })) };
   const passwordHasher = { hash: vi.fn(async (plain) => `hashed:${plain}`) };
-  const service = createAuthService({ userRepository, passwordHasher });
-  return { service, userRepository, passwordHasher };
+  const verificationCodeService = { issue: vi.fn().mockResolvedValue(undefined) };
+  const service = createAuthService({ userRepository, passwordHasher, verificationCodeService });
+  return { service, userRepository, passwordHasher, verificationCodeService };
 }
 
 const input = {
