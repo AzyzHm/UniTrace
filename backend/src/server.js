@@ -3,9 +3,12 @@ import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { connectDb, disconnectDb } from './db/connection.js';
 
+import { createRequireAuth } from './middlewares/require-auth.js';
 import { createUserRepository } from './repositories/user.repository.js';
 import { createPasswordHasher } from './services/password-hasher.js';
 import { createAuthService } from './services/auth.service.js';
+import { createSessionService } from './services/session.service.js';
+import { createTokenService } from './services/token.service.js';
 import { createVerificationCodeRepository } from './repositories/verification-code.repository.js';
 import { createCodeHasher } from './services/code-hasher.js';
 import { createConsoleEmailService, createEmailService } from './services/email.service.js';
@@ -31,6 +34,11 @@ async function start() {
     emailService,
   });
 
+  const tokenService = createTokenService({
+    secret: env.jwt.accessSecret,
+    expiresIn: env.jwt.accessExpires,
+  });
+
   const authService = createAuthService({
     userRepository,
     passwordHasher,
@@ -38,9 +46,14 @@ async function start() {
     logger,
   });
 
+  const sessionService = createSessionService({ userRepository, passwordHasher, tokenService });
+  const requireAuth = createRequireAuth({ tokenService, userRepository });
+
   const app = createApp({
     logger,
     authService,
+    sessionService,
+    requireAuth,
     allowedEmailDomains: env.allowedEmailDomains,
   });
   const server = app.listen(env.port, () => {

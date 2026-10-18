@@ -6,6 +6,7 @@ export function createAuthRoutes({
   registerSchema,
   verifyEmailSchema,
   resendVerificationSchema,
+  loginSchema,
 }) {
   const router = Router();
 
@@ -16,6 +17,7 @@ export function createAuthRoutes({
     validate(resendVerificationSchema),
     authController.resendVerification,
   );
+  router.post('/login', validate(loginSchema), authController.login);
 
   return router;
 }
