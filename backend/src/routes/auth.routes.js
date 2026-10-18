@@ -19,5 +19,10 @@ export function createAuthRoutes({
   );
   router.post('/login', validate(loginSchema), authController.login);
 
+  // No body and no schema: both routes work from the cookie alone, and logout
+  // must keep working after the access token has expired.
+  router.post('/refresh', authController.refresh);
+  router.post('/logout', authController.logout);
+
   return router;
 }
