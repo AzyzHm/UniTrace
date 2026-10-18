@@ -5,7 +5,13 @@ import { createApiRouter } from './routes/index.js';
 
 const silentLogger = { error() {}, warn() {}, info() {}, debug() {} };
 
-export function createApp({ logger = silentLogger, authService, allowedEmailDomains } = {}) {
+export function createApp({
+  logger = silentLogger,
+  authService,
+  sessionService,
+  requireAuth,
+  allowedEmailDomains,
+} = {}) {
   const app = express();
 
   app.use(express.json({ limit: '10kb' }));
@@ -14,7 +20,10 @@ export function createApp({ logger = silentLogger, authService, allowedEmailDoma
     res.status(200).json({ status: 'ok' });
   });
 
-  app.use('/api/v1', createApiRouter({ authService, allowedEmailDomains }));
+  app.use(
+    '/api/v1',
+    createApiRouter({ authService, sessionService, requireAuth, allowedEmailDomains }),
+  );
 
   app.use(notFoundHandler);
   app.use(createErrorHandler({ logger }));

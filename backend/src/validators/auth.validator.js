@@ -73,3 +73,11 @@ export const verifyEmailSchema = Joi.object({
 export const resendVerificationSchema = Joi.object({
   email: emailField(),
 });
+
+export const loginSchema = Joi.object({
+  email: emailField(),
+  // No strength rules and no trim: the rules apply when a password is chosen,
+  // and an older password must keep working. Max 72 matches bcrypt and keeps
+  // absurd inputs away from the hash function.
+  password: Joi.string().max(72).required(),
+});
