@@ -14,6 +14,37 @@ export function isAllowedEmailDomain(email, allowedDomains) {
   return allowedDomains.includes(domain);
 }
 
+// One definition of "a password someone may choose", used by register and by
+// reset, so the two can never drift apart.
+// Max 72: bcrypt silently ignores everything after 72 bytes, so a longer
+// limit would give a false sense of security.
+const passwordRule = () =>
+  Joi.string().min(8).max(72).pattern(PASSWORD_PATTERN).required().messages({
+    'string.pattern.base': 'Password must contain at least one letter and one digit',
+  });
+
+// .strip() removes it from the validated value, so the service never sees it.
+const confirmPasswordRule = (passwordField) =>
+  Joi.any()
+    .valid(Joi.ref(passwordField))
+    .required()
+    .strip()
+    .messages({ 'any.only': 'Passwords do not match' });
+
+// No domain check here: an address outside the allowed domains has no account,
+// so it simply finds nothing. Only the format matters, to stop junk early.
+const emailField = () => Joi.string().trim().lowercase().email().required();
+
+// A string, so a leading zero survives ("012345" must not become 12345).
+const codeField = () =>
+  Joi.string()
+    .trim()
+    .pattern(CODE_PATTERN)
+    .required()
+    .messages({
+      'string.pattern.base': `Code must be ${CODE_LENGTH} digits`,
+    });
+
 export function createRegisterSchema({ allowedEmailDomains }) {
   return Joi.object({
     username: Joi.string().trim().min(3).max(30).pattern(USERNAME_PATTERN).required().messages({
@@ -39,35 +70,14 @@ export function createRegisterSchema({ allowedEmailDomains }) {
       'string.pattern.base': 'Phone must be 8 to 15 digits, optionally starting with "+"',
     }),
 
-    // Max 72: bcrypt silently ignores everything after 72 bytes, so a longer
-    // limit would give a false sense of security.
-    password: Joi.string().min(8).max(72).pattern(PASSWORD_PATTERN).required().messages({
-      'string.pattern.base': 'Password must contain at least one letter and one digit',
-    }),
-
-    // .strip() removes it from the validated value, so the service never sees it.
-    confirmPassword: Joi.any()
-      .valid(Joi.ref('password'))
-      .required()
-      .strip()
-      .messages({ 'any.only': 'Passwords do not match' }),
+    password: passwordRule(),
+    confirmPassword: confirmPasswordRule('password'),
   });
 }
 
-// No domain check here: an address outside the allowed domains has no account,
-// so it simply finds nothing. Only the format matters, to stop junk early.
-const emailField = () => Joi.string().trim().lowercase().email().required();
-
 export const verifyEmailSchema = Joi.object({
   email: emailField(),
-  // A string, so a leading zero survives ("012345" must not become 12345).
-  code: Joi.string()
-    .trim()
-    .pattern(CODE_PATTERN)
-    .required()
-    .messages({
-      'string.pattern.base': `Code must be ${CODE_LENGTH} digits`,
-    }),
+  code: codeField(),
 });
 
 export const resendVerificationSchema = Joi.object({
@@ -80,4 +90,16 @@ export const loginSchema = Joi.object({
   // and an older password must keep working. Max 72 matches bcrypt and keeps
   // absurd inputs away from the hash function.
   password: Joi.string().max(72).required(),
+});
+
+export const forgotPasswordSchema = Joi.object({
+  email: emailField(),
+});
+
+export const resetPasswordSchema = Joi.object({
+  email: emailField(),
+  code: codeField(),
+  // "newPassword", not "password", so it can never be mistaken for a login.
+  newPassword: passwordRule(),
+  confirmPassword: confirmPasswordRule('newPassword'),
 });

@@ -132,4 +132,33 @@ describe('user repository', () => {
       expect(await repository.markEmailVerified(new mongoose.Types.ObjectId())).toBeNull();
     });
   });
+
+  describe('updatePassword', () => {
+    it('replaces the stored hash', async () => {
+      const created = await repository.create(buildUser());
+
+      await repository.updatePassword(
+        created._id,
+        '$2b$04$anotherhashanotherhashanotherhashanotherhashanotherha',
+      );
+
+      const found = await repository.findByEmailWithPassword('sara@isamm.uma.tn');
+      expect(found.password).toBe('$2b$04$anotherhashanotherhashanotherhashanotherhashanotherha');
+    });
+
+    it('changes nothing else about the user', async () => {
+      const created = await repository.create(buildUser());
+
+      const updated = await repository.updatePassword(created._id, 'new-hash');
+
+      expect(updated.email).toBe('sara@isamm.uma.tn');
+      expect(updated.username).toBe('sara.k');
+      expect(updated.role).toBe('user');
+      expect(updated.isEmailVerified).toBe(false);
+    });
+
+    it('returns null for an unknown id', async () => {
+      expect(await repository.updatePassword(new mongoose.Types.ObjectId(), 'new-hash')).toBeNull();
+    });
+  });
 });
