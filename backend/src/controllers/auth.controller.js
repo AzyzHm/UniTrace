@@ -5,7 +5,17 @@ import { toUserResponse } from '../presenters/user.presenter.js';
 const RESEND_MESSAGE =
   'If this address belongs to an unverified account, a new code has been sent.';
 
-export function createAuthController({ authService, sessionService, refreshCookie }) {
+// Identical for every address, so the answer says nothing about who has an account.
+const FORGOT_MESSAGE = 'If this address belongs to an account, a reset code has been sent.';
+
+const RESET_MESSAGE = 'Your password has been changed. Please log in again.';
+
+export function createAuthController({
+  authService,
+  sessionService,
+  passwordResetService,
+  refreshCookie,
+}) {
   // Login and refresh answer the same way: the refresh token goes into the
   // cookie only, the access token and the user go into the body.
   function sendSession(res, { user, accessToken, refreshToken }) {
@@ -50,6 +60,19 @@ export function createAuthController({ authService, sessionService, refreshCooki
       await sessionService.logout(refreshCookie.read(req));
       refreshCookie.clear(res);
       res.status(204).end();
+    },
+
+    async forgotPassword(req, res) {
+      await passwordResetService.requestReset(req.body);
+      res.status(200).json({ message: FORGOT_MESSAGE });
+    },
+
+    async resetPassword(req, res) {
+      await passwordResetService.resetPassword(req.body);
+      // Every session of this user just ended, including this browser's, so
+      // its cookie is dead. Removing it saves the browser a refresh that fails.
+      refreshCookie.clear(res);
+      res.status(200).json({ message: RESET_MESSAGE });
     },
   };
 }

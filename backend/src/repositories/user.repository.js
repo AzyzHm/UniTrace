@@ -47,5 +47,14 @@ export function createUserRepository({ model = User } = {}) {
         { returnDocument: 'after' },
       );
     },
+
+    // Takes a hash, never a plain password. Returns null for an unknown id.
+    updatePassword(id, passwordHash) {
+      return model.findOneAndUpdate(
+        { _id: id },
+        { $set: { password: passwordHash } },
+        { returnDocument: 'after' },
+      );
+    },
   };
 }

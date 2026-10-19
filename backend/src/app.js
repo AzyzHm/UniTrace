@@ -10,6 +10,7 @@ export function createApp({
   logger = silentLogger,
   authService,
   sessionService,
+  passwordResetService,
   requireAuth,
   allowedEmailDomains,
   secureCookies = false,
@@ -28,6 +29,7 @@ export function createApp({
     createApiRouter({
       authService,
       sessionService,
+      passwordResetService,
       requireAuth,
       allowedEmailDomains,
       secureCookies,

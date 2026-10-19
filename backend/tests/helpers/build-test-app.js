@@ -7,6 +7,7 @@ import { createVerificationCodeRepository } from '../../src/repositories/verific
 import { createAuthService } from '../../src/services/auth.service.js';
 import { createCodeHasher } from '../../src/services/code-hasher.js';
 import { createPasswordHasher } from '../../src/services/password-hasher.js';
+import { createPasswordResetService } from '../../src/services/password-reset.service.js';
 import { createRefreshTokenHasher } from '../../src/services/refresh-token-hasher.js';
 import { createSessionService } from '../../src/services/session.service.js';
 import { createTokenService } from '../../src/services/token.service.js';
@@ -27,6 +28,7 @@ export function buildTestApp() {
   };
 
   const userRepository = createUserRepository();
+  const refreshTokenRepository = createRefreshTokenRepository();
   const passwordHasher = createPasswordHasher({ cost: 4 });
   const tokenService = createTokenService({
     secret: TEST_JWT_SECRET,
@@ -46,9 +48,15 @@ export function buildTestApp() {
       userRepository,
       passwordHasher,
       tokenService,
-      refreshTokenRepository: createRefreshTokenRepository(),
+      refreshTokenRepository,
       refreshTokenHasher: createRefreshTokenHasher(),
       clock,
+    }),
+    passwordResetService: createPasswordResetService({
+      userRepository,
+      passwordHasher,
+      verificationCodeService,
+      refreshTokenRepository,
     }),
     requireAuth: createRequireAuth({ tokenService, userRepository }),
     allowedEmailDomains: ['isamm.uma.tn'],
