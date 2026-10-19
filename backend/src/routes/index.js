@@ -4,8 +4,10 @@ import { createUserController } from '../controllers/user.controller.js';
 import { createRefreshCookie } from '../utils/refresh-cookie.js';
 import {
   createRegisterSchema,
+  forgotPasswordSchema,
   loginSchema,
   resendVerificationSchema,
+  resetPasswordSchema,
   verifyEmailSchema,
 } from '../validators/auth.validator.js';
 import { createAuthRoutes } from './auth.routes.js';
@@ -16,6 +18,7 @@ import { createUserRoutes } from './user.routes.js';
 export function createApiRouter({
   authService,
   sessionService,
+  passwordResetService,
   requireAuth,
   allowedEmailDomains = [],
   secureCookies = false,
@@ -29,12 +32,15 @@ export function createApiRouter({
         authController: createAuthController({
           authService,
           sessionService,
+          passwordResetService,
           refreshCookie: createRefreshCookie({ secure: secureCookies }),
         }),
         registerSchema: createRegisterSchema({ allowedEmailDomains }),
         verifyEmailSchema,
         resendVerificationSchema,
         loginSchema,
+        forgotPasswordSchema,
+        resetPasswordSchema,
       }),
     );
   }

@@ -8,6 +8,7 @@ import { createRefreshTokenRepository } from './repositories/refresh-token.repos
 import { createUserRepository } from './repositories/user.repository.js';
 import { createPasswordHasher } from './services/password-hasher.js';
 import { createAuthService } from './services/auth.service.js';
+import { createPasswordResetService } from './services/password-reset.service.js';
 import { createRefreshTokenHasher } from './services/refresh-token-hasher.js';
 import { createSessionService } from './services/session.service.js';
 import { createTokenService } from './services/token.service.js';
@@ -20,6 +21,7 @@ async function start() {
   await connectDb(env.mongoUri);
 
   const userRepository = createUserRepository();
+  const refreshTokenRepository = createRefreshTokenRepository();
   const passwordHasher = createPasswordHasher();
   const { apiKey, inboxId } = env.agentmail;
   const emailService =
@@ -52,16 +54,25 @@ async function start() {
     userRepository,
     passwordHasher,
     tokenService,
-    refreshTokenRepository: createRefreshTokenRepository(),
+    refreshTokenRepository,
     refreshTokenHasher: createRefreshTokenHasher(),
     logger,
   });
+
+  const passwordResetService = createPasswordResetService({
+    userRepository,
+    passwordHasher,
+    verificationCodeService,
+    refreshTokenRepository,
+  });
+
   const requireAuth = createRequireAuth({ tokenService, userRepository });
 
   const app = createApp({
     logger,
     authService,
     sessionService,
+    passwordResetService,
     requireAuth,
     allowedEmailDomains: env.allowedEmailDomains,
     secureCookies: env.nodeEnv === 'production',

@@ -7,6 +7,8 @@ export function createAuthRoutes({
   verifyEmailSchema,
   resendVerificationSchema,
   loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 }) {
   const router = Router();
 
@@ -23,6 +25,9 @@ export function createAuthRoutes({
   // must keep working after the access token has expired.
   router.post('/refresh', authController.refresh);
   router.post('/logout', authController.logout);
+
+  router.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
+  router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
 
   return router;
 }
