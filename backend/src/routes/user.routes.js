@@ -6,6 +6,7 @@ export function createUserRoutes({
   requireAuth,
   updateProfileSchema,
   changePasswordSchema,
+  deleteAccountSchema,
 }) {
   const router = Router();
 
@@ -15,6 +16,7 @@ export function createUserRoutes({
   router.get('/me', userController.me);
   router.patch('/me', validate(updateProfileSchema), userController.updateMe);
   router.patch('/me/password', validate(changePasswordSchema), userController.changePassword);
+  router.delete('/me', validate(deleteAccountSchema), userController.deleteMe);
 
   return router;
 }

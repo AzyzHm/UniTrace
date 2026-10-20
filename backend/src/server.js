@@ -1,11 +1,14 @@
 import { createApp } from './app.js';
 import { env } from './config/env.js';
+import { EVENTS } from './constants/events.js';
+import { createEventBus } from './events/event-bus.js';
 import { logger } from './config/logger.js';
 import { connectDb, disconnectDb } from './db/connection.js';
 
 import { createRequireAuth } from './middlewares/require-auth.js';
 import { createRefreshTokenRepository } from './repositories/refresh-token.repository.js';
 import { createUserRepository } from './repositories/user.repository.js';
+import { createAccountDeletionService } from './services/account-deletion.service.js';
 import { createPasswordHasher } from './services/password-hasher.js';
 import { createAuthService } from './services/auth.service.js';
 import { createPasswordChangeService } from './services/password-change.service.js';
@@ -22,6 +25,13 @@ import { createVerificationCodeService } from './services/verification-code.serv
 async function start() {
   await connectDb(env.mongoUri);
 
+  const eventBus = createEventBus({ logger });
+  // Nobody acts on a deleted user yet. The declarations and matching code will
+  // register their own listeners here, so for now the event is only logged.
+  eventBus.on(EVENTS.USER_DELETED, ({ userId }) => {
+    logger.info({ userId }, 'User account deleted');
+  });
+
   const userRepository = createUserRepository();
   const refreshTokenRepository = createRefreshTokenRepository();
   const passwordHasher = createPasswordHasher();
@@ -34,8 +44,10 @@ async function start() {
     logger.warn('AgentMail is not configured: verification codes are logged, not emailed');
   }
 
+  const verificationCodeRepository = createVerificationCodeRepository();
+
   const verificationCodeService = createVerificationCodeService({
-    codeRepository: createVerificationCodeRepository(),
+    codeRepository: verificationCodeRepository,
     codeHasher: createCodeHasher({ secret: env.codeHashSecret }),
     emailService,
   });
@@ -83,6 +95,15 @@ async function start() {
     refreshTokenHasher,
   });
 
+  const accountDeletionService = createAccountDeletionService({
+    userRepository,
+    passwordHasher,
+    refreshTokenRepository,
+    verificationCodeRepository,
+    eventBus,
+    logger,
+  });
+
   const requireAuth = createRequireAuth({ tokenService, userRepository });
 
   const app = createApp({
@@ -92,6 +113,7 @@ async function start() {
     passwordResetService,
     profileService,
     passwordChangeService,
+    accountDeletionService,
     requireAuth,
     allowedEmailDomains: env.allowedEmailDomains,
     secureCookies: env.nodeEnv === 'production',
