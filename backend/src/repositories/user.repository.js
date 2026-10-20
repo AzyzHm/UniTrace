@@ -3,6 +3,10 @@ import { User } from '../models/user.model.js';
 
 const DUPLICATE_KEY_CODE = 11000;
 
+// Not a bcrypt hash and never one, so no password can match it. The "!"
+// follows the Unix convention for a locked account.
+const LOCKED_PASSWORD = '!';
+
 const DUPLICATE_MESSAGES = {
   email: 'Email is already used',
   username: 'Username is already taken',
@@ -83,6 +87,33 @@ export function createUserRepository({ model = User } = {}) {
       } catch (err) {
         throw toConflictError(err, 'Profile could not be updated');
       }
+    },
+
+    // Replaces everything that identifies the person, in one atomic update.
+    // The caller chooses the placeholder username and email (they must be
+    // unique per user, because both fields have a unique index). The filter
+    // matches only a live account, so of two simultaneous deletions exactly
+    // one gets a document back and the other gets null.
+    //
+    // runValidators is off on purpose: "deleted_user_<id>" is longer than the
+    // 30 characters the model allows for a username. That is safe, because
+    // the register rules cap real usernames at 30, so nobody can ever take
+    // such a name, and this is the only write that stores one.
+    anonymize(id, { username, email, deletedAt }) {
+      return model.findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        {
+          $set: {
+            username,
+            email,
+            phone: null,
+            password: LOCKED_PASSWORD,
+            isEmailVerified: false,
+            deletedAt,
+          },
+        },
+        { returnDocument: 'after', runValidators: false },
+      );
     },
   };
 }
