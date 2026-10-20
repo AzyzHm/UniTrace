@@ -7,6 +7,7 @@ import { createVerificationCodeRepository } from '../../src/repositories/verific
 import { createAuthService } from '../../src/services/auth.service.js';
 import { createCodeHasher } from '../../src/services/code-hasher.js';
 import { createPasswordHasher } from '../../src/services/password-hasher.js';
+import { createPasswordChangeService } from '../../src/services/password-change.service.js';
 import { createPasswordResetService } from '../../src/services/password-reset.service.js';
 import { createProfileService } from '../../src/services/profile.service.js';
 import { createRefreshTokenHasher } from '../../src/services/refresh-token-hasher.js';
@@ -43,6 +44,8 @@ export function buildTestApp() {
     clock,
   });
 
+  const refreshTokenHasher = createRefreshTokenHasher();
+
   const app = createApp({
     authService: createAuthService({ userRepository, passwordHasher, verificationCodeService }),
     sessionService: createSessionService({
@@ -50,7 +53,7 @@ export function buildTestApp() {
       passwordHasher,
       tokenService,
       refreshTokenRepository,
-      refreshTokenHasher: createRefreshTokenHasher(),
+      refreshTokenHasher,
       clock,
     }),
     passwordResetService: createPasswordResetService({
@@ -60,6 +63,13 @@ export function buildTestApp() {
       refreshTokenRepository,
     }),
     profileService: createProfileService({ userRepository, verificationCodeService }),
+    passwordChangeService: createPasswordChangeService({
+      userRepository,
+      passwordHasher,
+      refreshTokenRepository,
+      refreshTokenHasher,
+      clock,
+    }),
     requireAuth: createRequireAuth({ tokenService, userRepository }),
     allowedEmailDomains: ['isamm.uma.tn'],
   });

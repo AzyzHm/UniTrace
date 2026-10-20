@@ -10,7 +10,7 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
 } from '../validators/auth.validator.js';
-import { createUpdateProfileSchema } from '../validators/user.validator.js';
+import { changePasswordSchema, createUpdateProfileSchema } from '../validators/user.validator.js';
 import { createAuthRoutes } from './auth.routes.js';
 import { createUserRoutes } from './user.routes.js';
 
@@ -21,11 +21,14 @@ export function createApiRouter({
   sessionService,
   passwordResetService,
   profileService,
+  passwordChangeService,
   requireAuth,
   allowedEmailDomains = [],
   secureCookies = false,
 } = {}) {
   const router = Router();
+  // One instance for auth and users, so both read and clear the same cookie.
+  const refreshCookie = createRefreshCookie({ secure: secureCookies });
 
   if (authService) {
     router.use(
@@ -35,7 +38,7 @@ export function createApiRouter({
           authService,
           sessionService,
           passwordResetService,
-          refreshCookie: createRefreshCookie({ secure: secureCookies }),
+          refreshCookie,
         }),
         registerSchema: createRegisterSchema({ allowedEmailDomains }),
         verifyEmailSchema,
@@ -51,9 +54,14 @@ export function createApiRouter({
     router.use(
       '/users',
       createUserRoutes({
-        userController: createUserController({ profileService }),
+        userController: createUserController({
+          profileService,
+          passwordChangeService,
+          refreshCookie,
+        }),
         requireAuth,
         updateProfileSchema: createUpdateProfileSchema({ allowedEmailDomains }),
+        changePasswordSchema,
       }),
     );
   }
