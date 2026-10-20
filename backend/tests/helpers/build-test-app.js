@@ -8,6 +8,7 @@ import { createAuthService } from '../../src/services/auth.service.js';
 import { createCodeHasher } from '../../src/services/code-hasher.js';
 import { createPasswordHasher } from '../../src/services/password-hasher.js';
 import { createPasswordResetService } from '../../src/services/password-reset.service.js';
+import { createProfileService } from '../../src/services/profile.service.js';
 import { createRefreshTokenHasher } from '../../src/services/refresh-token-hasher.js';
 import { createSessionService } from '../../src/services/session.service.js';
 import { createTokenService } from '../../src/services/token.service.js';
@@ -58,6 +59,7 @@ export function buildTestApp() {
       verificationCodeService,
       refreshTokenRepository,
     }),
+    profileService: createProfileService({ userRepository, verificationCodeService }),
     requireAuth: createRequireAuth({ tokenService, userRepository }),
     allowedEmailDomains: ['isamm.uma.tn'],
   });
