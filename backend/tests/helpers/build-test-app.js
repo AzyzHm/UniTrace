@@ -1,9 +1,11 @@
 import { vi } from 'vitest';
 import { createApp } from '../../src/app.js';
+import { createEventBus } from '../../src/events/event-bus.js';
 import { createRequireAuth } from '../../src/middlewares/require-auth.js';
 import { createRefreshTokenRepository } from '../../src/repositories/refresh-token.repository.js';
 import { createUserRepository } from '../../src/repositories/user.repository.js';
 import { createVerificationCodeRepository } from '../../src/repositories/verification-code.repository.js';
+import { createAccountDeletionService } from '../../src/services/account-deletion.service.js';
 import { createAuthService } from '../../src/services/auth.service.js';
 import { createCodeHasher } from '../../src/services/code-hasher.js';
 import { createPasswordHasher } from '../../src/services/password-hasher.js';
@@ -29,6 +31,7 @@ export function buildTestApp() {
     sendPasswordResetCode: vi.fn().mockResolvedValue(undefined),
   };
 
+  const eventBus = createEventBus();
   const userRepository = createUserRepository();
   const refreshTokenRepository = createRefreshTokenRepository();
   const passwordHasher = createPasswordHasher({ cost: 4 });
@@ -37,8 +40,9 @@ export function buildTestApp() {
     expiresIn: '15m',
     clock,
   });
+  const verificationCodeRepository = createVerificationCodeRepository();
   const verificationCodeService = createVerificationCodeService({
-    codeRepository: createVerificationCodeRepository(),
+    codeRepository: verificationCodeRepository,
     codeHasher: createCodeHasher({ secret: 'a'.repeat(32) }),
     emailService,
     clock,
@@ -70,12 +74,21 @@ export function buildTestApp() {
       refreshTokenHasher,
       clock,
     }),
+    accountDeletionService: createAccountDeletionService({
+      userRepository,
+      passwordHasher,
+      refreshTokenRepository,
+      verificationCodeRepository,
+      eventBus,
+      clock,
+    }),
     requireAuth: createRequireAuth({ tokenService, userRepository }),
     allowedEmailDomains: ['isamm.uma.tn'],
   });
 
   return {
     app,
+    eventBus,
     emailService,
     passwordHasher,
     tokenService,

@@ -26,3 +26,10 @@ export const changePasswordSchema = Joi.object({
     .messages({ 'any.invalid': 'New password must be different from the current password' }),
   confirmPassword: confirmPasswordRule('newPassword'),
 });
+
+// The password is asked again so a stolen access token, or a phone left
+// unlocked, cannot erase an account. No strength rules and no trim, like
+// login: the stored password may be an older one.
+export const deleteAccountSchema = Joi.object({
+  password: Joi.string().max(72).required(),
+});

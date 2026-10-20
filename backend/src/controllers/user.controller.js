@@ -11,8 +11,18 @@ const MESSAGES = Object.freeze({
 const PASSWORD_CHANGED_MESSAGE =
   'Your password has been changed. Your other devices were logged out.';
 
-export function createUserController({ profileService, passwordChangeService, refreshCookie }) {
-  const dependencies = { profileService, passwordChangeService, refreshCookie };
+export function createUserController({
+  profileService,
+  passwordChangeService,
+  accountDeletionService,
+  refreshCookie,
+}) {
+  const dependencies = {
+    profileService,
+    passwordChangeService,
+    accountDeletionService,
+    refreshCookie,
+  };
   for (const [name, dependency] of Object.entries(dependencies)) {
     if (!dependency) {
       throw new Error(`createUserController(): ${name} is required`);
@@ -45,6 +55,15 @@ export function createUserController({ profileService, passwordChangeService, re
       // A response that sets a session must never be kept by a cache or proxy.
       res.set('Cache-Control', 'no-store');
       res.status(200).json({ message: PASSWORD_CHANGED_MESSAGE });
+    },
+
+    async deleteMe(req, res) {
+      await accountDeletionService.deleteAccount(req.user, req.body);
+
+      // Every session of the user just ended, including this browser's, so its
+      // cookie is dead. Removing it saves the browser a refresh that fails.
+      refreshCookie.clear(res);
+      res.status(204).end();
     },
   };
 }

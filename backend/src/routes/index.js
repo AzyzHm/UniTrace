@@ -10,7 +10,11 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
 } from '../validators/auth.validator.js';
-import { changePasswordSchema, createUpdateProfileSchema } from '../validators/user.validator.js';
+import {
+  changePasswordSchema,
+  createUpdateProfileSchema,
+  deleteAccountSchema,
+} from '../validators/user.validator.js';
 import { createAuthRoutes } from './auth.routes.js';
 import { createUserRoutes } from './user.routes.js';
 
@@ -22,6 +26,7 @@ export function createApiRouter({
   passwordResetService,
   profileService,
   passwordChangeService,
+  accountDeletionService,
   requireAuth,
   allowedEmailDomains = [],
   secureCookies = false,
@@ -57,11 +62,13 @@ export function createApiRouter({
         userController: createUserController({
           profileService,
           passwordChangeService,
+          accountDeletionService,
           refreshCookie,
         }),
         requireAuth,
         updateProfileSchema: createUpdateProfileSchema({ allowedEmailDomains }),
         changePasswordSchema,
+        deleteAccountSchema,
       }),
     );
   }
