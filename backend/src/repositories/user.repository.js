@@ -8,19 +8,24 @@ const DUPLICATE_MESSAGES = {
   username: 'Username is already taken',
 };
 
+// Turns the database's duplicate key error into the API's 409, naming the
+// field. Any other error is returned untouched for the caller to rethrow.
+function toConflictError(err, message) {
+  if (err.code !== DUPLICATE_KEY_CODE) return err;
+
+  const field = Object.keys(err.keyPattern ?? {})[0] ?? 'unknown';
+  return new ConflictError(message, [
+    { field, message: DUPLICATE_MESSAGES[field] ?? 'Value is already used' },
+  ]);
+}
+
 export function createUserRepository({ model = User } = {}) {
   return {
     async create(data) {
       try {
         return await model.create(data);
       } catch (err) {
-        if (err.code === DUPLICATE_KEY_CODE) {
-          const field = Object.keys(err.keyPattern ?? {})[0] ?? 'unknown';
-          throw new ConflictError('Account already exists', [
-            { field, message: DUPLICATE_MESSAGES[field] ?? 'Value is already used' },
-          ]);
-        }
-        throw err;
+        throw toConflictError(err, 'Account already exists');
       }
     },
 
@@ -55,6 +60,23 @@ export function createUserRepository({ model = User } = {}) {
         { $set: { password: passwordHash } },
         { returnDocument: 'after' },
       );
+    },
+
+    // One atomic update of the fields it is given, so a new email and the
+    // "not verified" flag change together or not at all. The caller decides
+    // which fields are allowed. Uniqueness is left to the indexes, so two
+    // people taking the same email at once cannot both win.
+    // Returns null for an unknown id.
+    async updateProfile(id, changes) {
+      try {
+        return await model.findOneAndUpdate(
+          { _id: id },
+          { $set: changes },
+          { returnDocument: 'after', runValidators: true },
+        );
+      } catch (err) {
+        throw toConflictError(err, 'Profile could not be updated');
+      }
     },
   };
 }
