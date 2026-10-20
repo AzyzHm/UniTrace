@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { validate } from '../middlewares/validate.js';
 
-export function createUserRoutes({ userController, requireAuth, updateProfileSchema }) {
+export function createUserRoutes({
+  userController,
+  requireAuth,
+  updateProfileSchema,
+  changePasswordSchema,
+}) {
   const router = Router();
 
   // Every /users route needs a logged in user, so it is declared once here.
@@ -9,6 +14,7 @@ export function createUserRoutes({ userController, requireAuth, updateProfileSch
 
   router.get('/me', userController.me);
   router.patch('/me', validate(updateProfileSchema), userController.updateMe);
+  router.patch('/me/password', validate(changePasswordSchema), userController.changePassword);
 
   return router;
 }

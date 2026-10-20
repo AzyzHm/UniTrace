@@ -9,13 +9,13 @@ const CODE_PATTERN = new RegExp(`^\\d{${CODE_LENGTH}}$`);
 // reset, so the two can never drift apart.
 // Max 72: bcrypt silently ignores everything after 72 bytes, so a longer
 // limit would give a false sense of security.
-const passwordRule = () =>
+export const passwordRule = () =>
   Joi.string().min(8).max(72).pattern(PASSWORD_PATTERN).required().messages({
     'string.pattern.base': 'Password must contain at least one letter and one digit',
   });
 
 // .strip() removes it from the validated value, so the service never sees it.
-const confirmPasswordRule = (passwordField) =>
+export const confirmPasswordRule = (passwordField) =>
   Joi.any()
     .valid(Joi.ref(passwordField))
     .required()

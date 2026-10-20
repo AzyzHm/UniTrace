@@ -43,6 +43,12 @@ export function createUserRepository({ model = User } = {}) {
       return model.findOne({ email }).select('+password');
     },
 
+    // For the one case that needs the hash of an already authenticated user:
+    // checking the current password before it is changed.
+    findByIdWithPassword(id) {
+      return model.findById(id).select('+password');
+    },
+
     // The filter makes the flip atomic and idempotent: it matches only a
     // user who is still unverified, and returns null otherwise.
     markEmailVerified(id) {

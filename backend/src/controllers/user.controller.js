@@ -8,9 +8,15 @@ const MESSAGES = Object.freeze({
     'Your email address was changed, but the verification code could not be sent. Request a new code in a moment.',
 });
 
-export function createUserController({ profileService }) {
-  if (!profileService) {
-    throw new Error('createUserController(): profileService is required');
+const PASSWORD_CHANGED_MESSAGE =
+  'Your password has been changed. Your other devices were logged out.';
+
+export function createUserController({ profileService, passwordChangeService, refreshCookie }) {
+  const dependencies = { profileService, passwordChangeService, refreshCookie };
+  for (const [name, dependency] of Object.entries(dependencies)) {
+    if (!dependency) {
+      throw new Error(`createUserController(): ${name} is required`);
+    }
   }
 
   return {
@@ -27,6 +33,18 @@ export function createUserController({ profileService }) {
       if (MESSAGES[verification]) body.message = MESSAGES[verification];
 
       res.status(200).json(body);
+    },
+
+    async changePassword(req, res) {
+      const { refreshToken } = await passwordChangeService.changePassword(req.user, req.body);
+
+      // This device stays logged in with a new refresh token, and every other
+      // session of the user is gone. The cookie path is /api/v1/auth even though
+      // this route is under /users, so it replaces the old cookie.
+      refreshCookie.set(res, refreshToken);
+      // A response that sets a session must never be kept by a cache or proxy.
+      res.set('Cache-Control', 'no-store');
+      res.status(200).json({ message: PASSWORD_CHANGED_MESSAGE });
     },
   };
 }
