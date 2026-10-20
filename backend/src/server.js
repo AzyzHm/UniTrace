@@ -9,6 +9,7 @@ import { createUserRepository } from './repositories/user.repository.js';
 import { createPasswordHasher } from './services/password-hasher.js';
 import { createAuthService } from './services/auth.service.js';
 import { createPasswordResetService } from './services/password-reset.service.js';
+import { createProfileService } from './services/profile.service.js';
 import { createRefreshTokenHasher } from './services/refresh-token-hasher.js';
 import { createSessionService } from './services/session.service.js';
 import { createTokenService } from './services/token.service.js';
@@ -66,6 +67,12 @@ async function start() {
     refreshTokenRepository,
   });
 
+  const profileService = createProfileService({
+    userRepository,
+    verificationCodeService,
+    logger,
+  });
+
   const requireAuth = createRequireAuth({ tokenService, userRepository });
 
   const app = createApp({
@@ -73,6 +80,7 @@ async function start() {
     authService,
     sessionService,
     passwordResetService,
+    profileService,
     requireAuth,
     allowedEmailDomains: env.allowedEmailDomains,
     secureCookies: env.nodeEnv === 'production',
