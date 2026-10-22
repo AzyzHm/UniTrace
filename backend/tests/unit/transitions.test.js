@@ -16,10 +16,13 @@ const ALLOWED = [
   ['matched', 'hidden', ['admin']],
   ['matched', 'deleted', ['user', 'admin']],
   ['resolved', 'pending', ['admin']],
+  ['resolved', 'hidden', ['admin']],
+  ['resolved', 'deleted', ['admin']],
   ['expired', 'pending', ['user', 'admin']],
   ['expired', 'deleted', ['user', 'admin']],
   ['hidden', 'pending', ['admin']],
   ['hidden', 'matched', ['admin']],
+  ['hidden', 'resolved', ['admin']],
   ['hidden', 'deleted', ['admin']],
 ];
 
@@ -46,7 +49,20 @@ describe('canTransition', () => {
   it('keeps resolved final for users but reopenable by an admin', () => {
     expect(canTransition('resolved', 'pending', 'user')).toBe(false);
     expect(canTransition('resolved', 'pending', 'admin')).toBe(true);
-    expect(canTransition('resolved', 'deleted', 'admin')).toBe(false);
+  });
+
+  it('lets an admin, and only an admin, hide or delete a resolved declaration', () => {
+    for (const to of ['hidden', 'deleted']) {
+      expect(canTransition('resolved', to, 'admin')).toBe(true);
+      expect(canTransition('resolved', to, 'user')).toBe(false);
+      expect(canTransition('resolved', to, 'system')).toBe(false);
+    }
+  });
+
+  it('lets an admin restore a hidden declaration to any status it can be hidden from', () => {
+    for (const to of ['pending', 'matched', 'resolved']) {
+      expect(canTransition('hidden', to, 'admin')).toBe(true);
+    }
   });
 
   it('keeps deleted final for everyone', () => {
@@ -79,6 +95,7 @@ describe('getAllowedTransitions', () => {
       'deleted',
       'matched',
       'pending',
+      'resolved',
     ]);
   });
 

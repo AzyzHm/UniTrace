@@ -18,16 +18,23 @@ const TRANSITIONS = Object.freeze({
     [S.HIDDEN]: [ADMIN],
     [S.DELETED]: [USER, ADMIN],
   },
+  // A resolved declaration is final for its owner. Only an admin can reopen,
+  // hide or delete it (moderation must reach a fake "I found it" too).
   [S.RESOLVED]: {
     [S.PENDING]: [ADMIN],
+    [S.HIDDEN]: [ADMIN],
+    [S.DELETED]: [ADMIN],
   },
   [S.EXPIRED]: {
     [S.PENDING]: [USER, ADMIN],
     [S.DELETED]: [USER, ADMIN],
   },
+  // Restoring goes back to the status kept in statusBeforeHidden, so every
+  // status a declaration can be hidden from is a valid target here.
   [S.HIDDEN]: {
     [S.PENDING]: [ADMIN],
     [S.MATCHED]: [ADMIN],
+    [S.RESOLVED]: [ADMIN],
     [S.DELETED]: [ADMIN],
   },
   [S.DELETED]: {},

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CATEGORIES, CATEGORY_KEYS } from '../../src/constants/categories.js';
 import { DECLARATION_STATUS_VALUES } from '../../src/constants/declaration-status.js';
+import { EVENTS } from '../../src/constants/events.js';
 import { ROLE_VALUES, isAdminRole } from '../../src/constants/roles.js';
 
 describe('constants', () => {
@@ -35,6 +36,16 @@ describe('constants', () => {
   it('flags student cards as sensitive and phones as high value', () => {
     expect(CATEGORIES.student_card_id.sensitive).toBe(true);
     expect(CATEGORIES.phone.highValue).toBe(true);
+  });
+
+  it('names the four events of the contract with the other binomes', () => {
+    expect(EVENTS).toEqual({
+      USER_DELETED: 'user.deleted',
+      DECLARATION_CREATED: 'declaration.created',
+      DECLARATION_UPDATED: 'declaration.updated',
+      DECLARATION_STATUS_CHANGED: 'declaration.statusChanged',
+    });
+    expect(Object.isFrozen(EVENTS)).toBe(true);
   });
 
   it('cannot be mutated', () => {

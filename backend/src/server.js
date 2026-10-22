@@ -1,14 +1,17 @@
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { EVENTS } from './constants/events.js';
+import { registerDeclarationListeners } from './events/declaration-listeners.js';
 import { createEventBus } from './events/event-bus.js';
 import { logger } from './config/logger.js';
 import { connectDb, disconnectDb } from './db/connection.js';
 
 import { createRequireAuth } from './middlewares/require-auth.js';
+import { createDeclarationRepository } from './repositories/declaration.repository.js';
 import { createRefreshTokenRepository } from './repositories/refresh-token.repository.js';
 import { createUserRepository } from './repositories/user.repository.js';
 import { createAccountDeletionService } from './services/account-deletion.service.js';
+import { createDeclarationCleanupService } from './services/declaration-cleanup.service.js';
 import { createPasswordHasher } from './services/password-hasher.js';
 import { createAuthService } from './services/auth.service.js';
 import { createPasswordChangeService } from './services/password-change.service.js';
@@ -26,10 +29,17 @@ async function start() {
   await connectDb(env.mongoUri);
 
   const eventBus = createEventBus({ logger });
-  // Nobody acts on a deleted user yet. The declarations and matching code will
-  // register their own listeners here, so for now the event is only logged.
   eventBus.on(EVENTS.USER_DELETED, ({ userId }) => {
     logger.info({ userId }, 'User account deleted');
+  });
+
+  const declarationRepository = createDeclarationRepository();
+  registerDeclarationListeners({
+    eventBus,
+    declarationCleanupService: createDeclarationCleanupService({
+      declarationRepository,
+      eventBus,
+    }),
   });
 
   const userRepository = createUserRepository();
