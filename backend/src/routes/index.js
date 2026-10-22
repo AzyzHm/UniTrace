@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { createAuthController } from '../controllers/auth.controller.js';
+import { createDeclarationController } from '../controllers/declaration.controller.js';
 import { createUserController } from '../controllers/user.controller.js';
 import { createRefreshCookie } from '../utils/refresh-cookie.js';
 import {
@@ -10,12 +11,14 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
 } from '../validators/auth.validator.js';
+import { createDeclarationSchema } from '../validators/declaration.validator.js';
 import {
   changePasswordSchema,
   createUpdateProfileSchema,
   deleteAccountSchema,
 } from '../validators/user.validator.js';
 import { createAuthRoutes } from './auth.routes.js';
+import { createDeclarationRoutes } from './declaration.routes.js';
 import { createUserRoutes } from './user.routes.js';
 
 // Only mounts what it receives, so tests that do not need a database
@@ -27,6 +30,7 @@ export function createApiRouter({
   profileService,
   passwordChangeService,
   accountDeletionService,
+  declarationService,
   requireAuth,
   allowedEmailDomains = [],
   secureCookies = false,
@@ -69,6 +73,17 @@ export function createApiRouter({
         updateProfileSchema: createUpdateProfileSchema({ allowedEmailDomains }),
         changePasswordSchema,
         deleteAccountSchema,
+      }),
+    );
+  }
+
+  if (requireAuth && declarationService) {
+    router.use(
+      '/declarations',
+      createDeclarationRoutes({
+        declarationController: createDeclarationController({ declarationService }),
+        requireAuth,
+        createDeclarationSchema,
       }),
     );
   }

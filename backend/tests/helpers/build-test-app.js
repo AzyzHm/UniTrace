@@ -11,6 +11,7 @@ import { createAccountDeletionService } from '../../src/services/account-deletio
 import { createAuthService } from '../../src/services/auth.service.js';
 import { createCodeHasher } from '../../src/services/code-hasher.js';
 import { createDeclarationCleanupService } from '../../src/services/declaration-cleanup.service.js';
+import { createDeclarationService } from '../../src/services/declaration.service.js';
 import { createPasswordHasher } from '../../src/services/password-hasher.js';
 import { createPasswordChangeService } from '../../src/services/password-change.service.js';
 import { createPasswordResetService } from '../../src/services/password-reset.service.js';
@@ -93,6 +94,7 @@ export function buildTestApp() {
       eventBus,
       clock,
     }),
+    declarationService: createDeclarationService({ declarationRepository, eventBus }),
     requireAuth: createRequireAuth({ tokenService, userRepository }),
     allowedEmailDomains: ['isamm.uma.tn'],
   });
