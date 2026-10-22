@@ -12,6 +12,7 @@ import { createRefreshTokenRepository } from './repositories/refresh-token.repos
 import { createUserRepository } from './repositories/user.repository.js';
 import { createAccountDeletionService } from './services/account-deletion.service.js';
 import { createDeclarationCleanupService } from './services/declaration-cleanup.service.js';
+import { createDeclarationService } from './services/declaration.service.js';
 import { createPasswordHasher } from './services/password-hasher.js';
 import { createAuthService } from './services/auth.service.js';
 import { createPasswordChangeService } from './services/password-change.service.js';
@@ -114,6 +115,8 @@ async function start() {
     logger,
   });
 
+  const declarationService = createDeclarationService({ declarationRepository, eventBus });
+
   const requireAuth = createRequireAuth({ tokenService, userRepository });
 
   const app = createApp({
@@ -124,6 +127,7 @@ async function start() {
     profileService,
     passwordChangeService,
     accountDeletionService,
+    declarationService,
     requireAuth,
     allowedEmailDomains: env.allowedEmailDomains,
     secureCookies: env.nodeEnv === 'production',
