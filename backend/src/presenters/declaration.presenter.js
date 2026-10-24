@@ -29,3 +29,22 @@ export function toOwnerDeclarationResponse(declaration) {
     updatedAt: declaration.updatedAt,
   };
 }
+
+// One row of a list. It is the owner view WITHOUT the long and private parts:
+// no privateInfo (never in a list, spec 9.3), no description and no
+// attributes (the detail route returns them). A whitelist again, so a field
+// added to the model never reaches a list by accident.
+export function toDeclarationSummary(declaration) {
+  return {
+    id: declaration.id ?? String(declaration._id),
+    title: declaration.title,
+    type: declaration.type,
+    category: declaration.category,
+    picture: declaration.picture ?? null,
+    status: declaration.status,
+    date: declaration.date,
+    location: declaration.location,
+    createdAt: declaration.createdAt,
+    updatedAt: declaration.updatedAt,
+  };
+}

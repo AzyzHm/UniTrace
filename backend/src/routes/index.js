@@ -11,7 +11,10 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
 } from '../validators/auth.validator.js';
-import { createDeclarationSchema } from '../validators/declaration.validator.js';
+import {
+  createDeclarationSchema,
+  listMyDeclarationsQuerySchema,
+} from '../validators/declaration.validator.js';
 import {
   changePasswordSchema,
   createUpdateProfileSchema,
@@ -84,6 +87,7 @@ export function createApiRouter({
         declarationController: createDeclarationController({ declarationService }),
         requireAuth,
         createDeclarationSchema,
+        listMyDeclarationsQuerySchema,
       }),
     );
   }

@@ -108,3 +108,72 @@ describe('declaration service, create', () => {
     expect(eventBus.emit).not.toHaveBeenCalled();
   });
 });
+
+describe('declaration service, listMine', () => {
+  function setupList(result = { items: [], total: 0 }) {
+    const declarationRepository = { findPageByOwner: vi.fn().mockResolvedValue(result) };
+    const eventBus = { emit: vi.fn() };
+    const service = createDeclarationService({ declarationRepository, eventBus });
+    return { service, declarationRepository, eventBus };
+  }
+
+  it('asks for the page of the connected user, never of someone else', async () => {
+    const { service, declarationRepository } = setupList();
+
+    await service.listMine(USER, { page: 1, limit: 20 });
+
+    expect(declarationRepository.findPageByOwner).toHaveBeenCalledWith(USER._id, {
+      type: undefined,
+      status: undefined,
+      skip: 0,
+      limit: 20,
+    });
+  });
+
+  it('turns the page number into a skip', async () => {
+    const { service, declarationRepository } = setupList();
+
+    await service.listMine(USER, { page: 3, limit: 10 });
+
+    expect(declarationRepository.findPageByOwner.mock.calls[0][1]).toMatchObject({
+      skip: 20,
+      limit: 10,
+    });
+  });
+
+  it('passes the filters on', async () => {
+    const { service, declarationRepository } = setupList();
+
+    await service.listMine(USER, { page: 1, limit: 20, type: 'found', status: 'hidden' });
+
+    expect(declarationRepository.findPageByOwner.mock.calls[0][1]).toMatchObject({
+      type: 'found',
+      status: 'hidden',
+    });
+  });
+
+  it('returns the rows with the page, the limit, the total and the page count', async () => {
+    const items = [{ _id: 'a' }, { _id: 'b' }];
+    const { service } = setupList({ items, total: 41 });
+
+    const result = await service.listMine(USER, { page: 2, limit: 20 });
+
+    expect(result).toEqual({ items, page: 2, limit: 20, total: 41, totalPages: 3 });
+  });
+
+  it('counts zero pages when nothing matches', async () => {
+    const { service } = setupList({ items: [], total: 0 });
+
+    const result = await service.listMine(USER, { page: 1, limit: 20 });
+
+    expect(result.totalPages).toBe(0);
+  });
+
+  it('announces nothing, a read changes nothing', async () => {
+    const { service, eventBus } = setupList();
+
+    await service.listMine(USER, { page: 1, limit: 20 });
+
+    expect(eventBus.emit).not.toHaveBeenCalled();
+  });
+});

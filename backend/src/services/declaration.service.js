@@ -49,5 +49,19 @@ export function createDeclarationService({ declarationRepository, eventBus }) {
 
       return declaration;
     },
+
+    // "query" is the validated query string, so page and limit are numbers
+    // with their defaults already applied. The skip is computed here, the
+    // repository only knows about skip and limit.
+    async listMine(user, { page, limit, type, status }) {
+      const { items, total } = await declarationRepository.findPageByOwner(user._id, {
+        type,
+        status,
+        skip: (page - 1) * limit,
+        limit,
+      });
+
+      return { items, page, limit, total, totalPages: Math.ceil(total / limit) };
+    },
   };
 }

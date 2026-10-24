@@ -18,6 +18,28 @@ export function createDeclarationRepository({ model = Declaration } = {}) {
       return model.findById(id).select('+privateInfo');
     },
 
+    // One page of the owner's declarations, newest first, plus the total
+    // that matches the filters (the client needs it to draw the pages).
+    // A soft deleted declaration is never listed. Without a status filter that
+    // is "not deleted", with one it is exactly that status. The _id in the
+    // sort breaks ties, so two declarations created in the same millisecond
+    // never swap places between page 1 and page 2. lean() returns plain
+    // objects: nothing here will be saved, and privateInfo stays unloaded.
+    async findPageByOwner(ownerId, { type, status, skip, limit }) {
+      const filter = {
+        owner: ownerId,
+        status: status ?? { $ne: DECLARATION_STATUSES.DELETED },
+      };
+      if (type) filter.type = type;
+
+      const [items, total] = await Promise.all([
+        model.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
+        model.countDocuments(filter),
+      ]);
+
+      return { items, total };
+    },
+
     // Soft deletes every declaration of the owner that is in one of the given
     // statuses, and returns what it changed as [{ id, from }], so the caller
     // can announce each change. Two steps (find, then update by id) because
