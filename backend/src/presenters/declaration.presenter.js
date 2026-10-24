@@ -1,3 +1,5 @@
+import { CATEGORIES } from '../constants/categories.js';
+
 // A Mongoose document holds attributes as a Map, a lean object holds a plain
 // object. Both come out as a plain object.
 function toPlainAttributes(attributes) {
@@ -27,6 +29,31 @@ export function toOwnerDeclarationResponse(declaration) {
     location: declaration.location,
     createdAt: declaration.createdAt,
     updatedAt: declaration.updatedAt,
+  };
+}
+
+// What ANY OTHER user sees (spec 6.2 and 9.3). The strict public split:
+// no privateInfo, no owner (not even an id: who owns an item is revealed only
+// inside an accepted match), no internal field, no updatedAt. Same whitelist
+// logic as above.
+//
+// The picture of a sensitive category (a student card) is never public, even
+// when one was stored: a photo of an ID shows a name and a face (spec 6.3).
+export function toPublicDeclarationResponse(declaration) {
+  const isSensitive = CATEGORIES[declaration.category]?.sensitive === true;
+
+  return {
+    id: declaration.id ?? String(declaration._id),
+    title: declaration.title,
+    type: declaration.type,
+    description: declaration.description,
+    category: declaration.category,
+    attributes: toPlainAttributes(declaration.attributes),
+    picture: isSensitive ? null : (declaration.picture ?? null),
+    status: declaration.status,
+    date: declaration.date,
+    location: declaration.location,
+    createdAt: declaration.createdAt,
   };
 }
 

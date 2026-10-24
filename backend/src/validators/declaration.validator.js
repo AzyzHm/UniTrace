@@ -27,6 +27,24 @@ export const createDeclarationSchema = Joi.object({
   privateInfo: privateInfoField(),
 });
 
+// Exactly the 24 hex characters of a MongoDB ObjectId, nothing around them.
+// One pattern rather than hex() plus length(): a bad value then gives ONE
+// error, not two identical messages.
+const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
+
+// The ":id" of every "/declarations/:id" route. Mongoose would also cast other
+// shapes (a 12 character string, for instance), so the strict check is done
+// here, before the database is asked anything: a malformed id is a 400, not a
+// 500 from a CastError.
+export const declarationIdParamsSchema = Joi.object({
+  id: Joi.string().pattern(OBJECT_ID_PATTERN).required().messages({
+    'string.base': 'id must be a valid declaration id',
+    'string.empty': 'id must be a valid declaration id',
+    'string.pattern.base': 'id must be a valid declaration id',
+    'any.required': 'id is required',
+  }),
+});
+
 // "deleted" is not a valid filter: a soft deleted declaration is gone for its
 // owner too, so the list never shows it and asking for it is a mistake worth
 // a 400 rather than a silent empty page.
