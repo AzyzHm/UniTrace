@@ -18,6 +18,22 @@ export function createDeclarationRepository({ model = Declaration } = {}) {
       return model.findById(id).select('+privateInfo');
     },
 
+    // Sets the given fields and returns the declaration as it is now, with its
+    // privateInfo (the caller is the owner or an admin). The filter repeats
+    // the status the caller based its decision on: if the status moved in the
+    // meantime (an admin hid it, the owner deleted it), nothing is written and
+    // the answer is null. updatedAt is refreshed by Mongoose, and the model
+    // rules (lengths, enums) are checked again on the update.
+    updateFields(id, fields, expectedStatus) {
+      return model
+        .findOneAndUpdate(
+          { _id: id, status: expectedStatus },
+          { $set: fields },
+          { returnDocument: 'after', runValidators: true },
+        )
+        .select('+privateInfo');
+    },
+
     // One page of the owner's declarations, newest first, plus the total
     // that matches the filters (the client needs it to draw the pages).
     // A soft deleted declaration is never listed. Without a status filter that

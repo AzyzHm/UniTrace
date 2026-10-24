@@ -15,6 +15,7 @@ import {
   createDeclarationSchema,
   declarationIdParamsSchema,
   listMyDeclarationsQuerySchema,
+  updateDeclarationSchema,
 } from '../validators/declaration.validator.js';
 import {
   changePasswordSchema,
@@ -90,6 +91,7 @@ export function createApiRouter({
         createDeclarationSchema,
         listMyDeclarationsQuerySchema,
         declarationIdParamsSchema,
+        updateDeclarationSchema,
       }),
     );
   }
