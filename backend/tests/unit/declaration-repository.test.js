@@ -84,3 +84,72 @@ describe('declaration repository, clearPrivateInfoByOwner', () => {
     expect(count).toBe(2);
   });
 });
+
+// A fake model for the chained read: find().sort().skip().limit().lean().
+function setupPage({ items = [], total = 0 } = {}) {
+  const chain = {
+    sort: vi.fn(() => chain),
+    skip: vi.fn(() => chain),
+    limit: vi.fn(() => chain),
+    lean: vi.fn().mockResolvedValue(items),
+  };
+  const model = {
+    find: vi.fn(() => chain),
+    countDocuments: vi.fn().mockResolvedValue(total),
+  };
+  return { repository: createDeclarationRepository({ model }), model, chain };
+}
+
+describe('declaration repository, findPageByOwner', () => {
+  it('lists everything of the owner except deleted ones when no status is asked', async () => {
+    const { repository, model } = setupPage();
+
+    await repository.findPageByOwner(OWNER, { skip: 0, limit: 20 });
+
+    expect(model.find).toHaveBeenCalledWith({ owner: OWNER, status: { $ne: 'deleted' } });
+  });
+
+  it('filters on the status and the type when they are given', async () => {
+    const { repository, model } = setupPage();
+
+    await repository.findPageByOwner(OWNER, {
+      type: 'lost',
+      status: 'matched',
+      skip: 0,
+      limit: 20,
+    });
+
+    expect(model.find).toHaveBeenCalledWith({ owner: OWNER, status: 'matched', type: 'lost' });
+  });
+
+  it('sorts newest first with the id as tie-breaker, then skips and limits', async () => {
+    const { repository, chain } = setupPage();
+
+    await repository.findPageByOwner(OWNER, { skip: 40, limit: 20 });
+
+    expect(chain.sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
+    expect(chain.skip).toHaveBeenCalledWith(40);
+    expect(chain.limit).toHaveBeenCalledWith(20);
+    expect(chain.lean).toHaveBeenCalled();
+  });
+
+  it('counts with the same filter, without skip and limit', async () => {
+    const { repository, model } = setupPage();
+
+    await repository.findPageByOwner(OWNER, { type: 'found', skip: 20, limit: 10 });
+
+    expect(model.countDocuments).toHaveBeenCalledWith({
+      owner: OWNER,
+      status: { $ne: 'deleted' },
+      type: 'found',
+    });
+  });
+
+  it('returns the rows and the total', async () => {
+    const { repository } = setupPage({ items: [{ _id: 'a' }], total: 7 });
+
+    const result = await repository.findPageByOwner(OWNER, { skip: 0, limit: 1 });
+
+    expect(result).toEqual({ items: [{ _id: 'a' }], total: 7 });
+  });
+});

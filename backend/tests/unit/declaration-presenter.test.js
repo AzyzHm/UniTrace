@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
 import { describe, expect, it } from 'vitest';
 import { Declaration } from '../../src/models/declaration.model.js';
-import { toOwnerDeclarationResponse } from '../../src/presenters/declaration.presenter.js';
+import {
+  toDeclarationSummary,
+  toOwnerDeclarationResponse,
+} from '../../src/presenters/declaration.presenter.js';
 
 // A real model instance, built without a database.
 function build(overrides = {}) {
@@ -101,5 +104,64 @@ describe('owner declaration presenter', () => {
     expect(response.attributes).toEqual({ brand: 'Nike' });
     expect(response.privateInfo).toBeNull();
     expect(response).not.toHaveProperty('owner');
+  });
+});
+
+describe('declaration summary presenter', () => {
+  it('returns exactly the list row, and nothing else', () => {
+    const response = toDeclarationSummary(build());
+
+    expect(Object.keys(response).sort()).toEqual([
+      'category',
+      'createdAt',
+      'date',
+      'id',
+      'location',
+      'picture',
+      'status',
+      'title',
+      'type',
+      'updatedAt',
+    ]);
+  });
+
+  it('leaves out the private info, the long fields and the internals', () => {
+    const response = toDeclarationSummary(build({ statusBeforeHidden: 'matched' }));
+    const keys = Object.keys(response);
+
+    for (const hidden of [
+      'privateInfo',
+      'description',
+      'attributes',
+      'owner',
+      'statusBeforeHidden',
+      'deletedAt',
+      '_id',
+      '__v',
+    ]) {
+      expect(keys).not.toContain(hidden);
+    }
+    expect(JSON.stringify(response)).not.toContain('Name on page 1');
+  });
+
+  it('reads a lean row, where the id is an ObjectId called _id', () => {
+    const _id = new mongoose.Types.ObjectId();
+
+    const response = toDeclarationSummary({
+      _id,
+      title: 'Keys',
+      type: 'found',
+      category: 'keys',
+      status: 'pending',
+      date: new Date('2026-10-12T00:00:00Z'),
+      location: 'Hall',
+      owner: new mongoose.Types.ObjectId(),
+      privateInfo: 'should never show',
+    });
+
+    expect(response.id).toBe(String(_id));
+    expect(response.picture).toBeNull();
+    expect(response).not.toHaveProperty('owner');
+    expect(response).not.toHaveProperty('privateInfo');
   });
 });
