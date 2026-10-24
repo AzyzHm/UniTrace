@@ -6,6 +6,7 @@ export function createDeclarationRoutes({
   requireAuth,
   createDeclarationSchema,
   listMyDeclarationsQuerySchema,
+  declarationIdParamsSchema,
 }) {
   const router = Router();
 
@@ -20,6 +21,8 @@ export function createDeclarationRoutes({
     validate(listMyDeclarationsQuerySchema, 'query'),
     declarationController.listMine,
   );
+
+  router.get('/:id', validate(declarationIdParamsSchema, 'params'), declarationController.getById);
 
   return router;
 }

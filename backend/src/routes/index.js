@@ -13,6 +13,7 @@ import {
 } from '../validators/auth.validator.js';
 import {
   createDeclarationSchema,
+  declarationIdParamsSchema,
   listMyDeclarationsQuerySchema,
 } from '../validators/declaration.validator.js';
 import {
@@ -88,6 +89,7 @@ export function createApiRouter({
         requireAuth,
         createDeclarationSchema,
         listMyDeclarationsQuerySchema,
+        declarationIdParamsSchema,
       }),
     );
   }

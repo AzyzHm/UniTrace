@@ -1,6 +1,7 @@
 import {
   toDeclarationSummary,
   toOwnerDeclarationResponse,
+  toPublicDeclarationResponse,
 } from '../presenters/declaration.presenter.js';
 
 export function createDeclarationController({ declarationService }) {
@@ -20,6 +21,23 @@ export function createDeclarationController({ declarationService }) {
       const { items, ...pagination } = await declarationService.listMine(req.user, req.query);
 
       res.status(200).json({ declarations: items.map(toDeclarationSummary), pagination });
+    },
+
+    // The service decides how much the reader may see, the presenter shapes
+    // it. isOwner lets the client show the owner's actions, and ownerDeleted
+    // is the "deleted user" label: a fact, not a sentence, so the wording
+    // stays the client's choice (language, vocabulary of the context).
+    async getById(req, res) {
+      const { declaration, isOwner, canSeePrivate, ownerDeleted } =
+        await declarationService.getById(req.user, req.params.id);
+
+      res.status(200).json({
+        declaration: canSeePrivate
+          ? toOwnerDeclarationResponse(declaration)
+          : toPublicDeclarationResponse(declaration),
+        isOwner,
+        ownerDeleted,
+      });
     },
   };
 }
