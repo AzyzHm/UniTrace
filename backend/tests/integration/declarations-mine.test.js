@@ -270,7 +270,9 @@ describe('GET /api/v1/declarations/mine', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
-      expect(res.body.error.details.map((d) => d.field)).toEqual([field]);
+      // Unique, because one bad value can break two rules of the same field
+      // (an empty type is both "not allowed to be empty" and "not lost or found").
+      expect([...new Set(res.body.error.details.map((d) => d.field))]).toEqual([field]);
     });
 
     it('refuses a parameter that is not allowed, such as another owner', async () => {
