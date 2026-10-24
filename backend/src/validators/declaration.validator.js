@@ -27,6 +27,26 @@ export const createDeclarationSchema = Joi.object({
   privateInfo: privateInfoField(),
 });
 
+// What an update may change: the same six rules as the create schema (shared
+// from declaration-fields.js, so the two never drift apart), none of them
+// required, but at least one present. "type" is absent on purpose: a lost
+// declaration that becomes a found one is a different declaration, and the
+// matching built on the old type would be wrong. "owner", "status",
+// "picture" and "privateInfo" are absent too: status has its own route, the
+// picture will come from the upload step, and the hidden detail is not
+// editable here. Anything not listed is a 400 ("<field> is not allowed").
+// "attributes" REPLACES the whole object, so {} clears it.
+export const updateDeclarationSchema = Joi.object({
+  title: titleField(),
+  description: descriptionField(),
+  date: dateField(),
+  location: locationField(),
+  category: categoryField(),
+  attributes: attributesField(),
+})
+  .min(1)
+  .messages({ 'object.min': 'At least one field to update is required' });
+
 // Exactly the 24 hex characters of a MongoDB ObjectId, nothing around them.
 // One pattern rather than hex() plus length(): a bad value then gives ONE
 // error, not two identical messages.
