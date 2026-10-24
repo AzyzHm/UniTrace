@@ -1,4 +1,7 @@
-import { toOwnerDeclarationResponse } from '../presenters/declaration.presenter.js';
+import {
+  toDeclarationSummary,
+  toOwnerDeclarationResponse,
+} from '../presenters/declaration.presenter.js';
 
 export function createDeclarationController({ declarationService }) {
   if (!declarationService) {
@@ -11,6 +14,12 @@ export function createDeclarationController({ declarationService }) {
       const declaration = await declarationService.create(req.user, req.body);
 
       res.status(201).json({ declaration: toOwnerDeclarationResponse(declaration) });
+    },
+
+    async listMine(req, res) {
+      const { items, ...pagination } = await declarationService.listMine(req.user, req.query);
+
+      res.status(200).json({ declarations: items.map(toDeclarationSummary), pagination });
     },
   };
 }

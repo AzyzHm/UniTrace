@@ -5,6 +5,7 @@ export function createDeclarationRoutes({
   declarationController,
   requireAuth,
   createDeclarationSchema,
+  listMyDeclarationsQuerySchema,
 }) {
   const router = Router();
 
@@ -12,6 +13,13 @@ export function createDeclarationRoutes({
   router.use(requireAuth);
 
   router.post('/', validate(createDeclarationSchema), declarationController.create);
+
+  // Declared BEFORE any "/:id" route, otherwise Express reads "mine" as an id.
+  router.get(
+    '/mine',
+    validate(listMyDeclarationsQuerySchema, 'query'),
+    declarationController.listMine,
+  );
 
   return router;
 }
