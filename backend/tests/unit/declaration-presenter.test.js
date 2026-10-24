@@ -4,6 +4,7 @@ import { Declaration } from '../../src/models/declaration.model.js';
 import {
   toDeclarationSummary,
   toOwnerDeclarationResponse,
+  toPublicDeclarationResponse,
 } from '../../src/presenters/declaration.presenter.js';
 
 // A real model instance, built without a database.
@@ -104,6 +105,120 @@ describe('owner declaration presenter', () => {
     expect(response.attributes).toEqual({ brand: 'Nike' });
     expect(response.privateInfo).toBeNull();
     expect(response).not.toHaveProperty('owner');
+  });
+});
+
+describe('public declaration presenter', () => {
+  it('returns exactly the public split, and nothing else', () => {
+    const response = toPublicDeclarationResponse(build());
+
+    expect(Object.keys(response).sort()).toEqual([
+      'attributes',
+      'category',
+      'createdAt',
+      'date',
+      'description',
+      'id',
+      'location',
+      'picture',
+      'status',
+      'title',
+      'type',
+    ]);
+  });
+
+  it('never exposes the private info, the owner, the internals or the update date', () => {
+    const response = toPublicDeclarationResponse(
+      build({ statusBeforeHidden: 'matched', deletedAt: new Date() }),
+    );
+    const keys = Object.keys(response);
+
+    for (const hidden of [
+      'privateInfo',
+      'owner',
+      'statusBeforeHidden',
+      'deletedAt',
+      'updatedAt',
+      '_id',
+      '__v',
+    ]) {
+      expect(keys).not.toContain(hidden);
+    }
+    expect(JSON.stringify(response)).not.toContain('Name on page 1');
+  });
+
+  it('never leaks the owner id, even as text inside another field', () => {
+    const doc = build();
+
+    expect(JSON.stringify(toPublicDeclarationResponse(doc))).not.toContain(String(doc.owner));
+  });
+
+  it('keeps the description and the attributes, a stranger needs them to recognize the item', () => {
+    const response = toPublicDeclarationResponse(build());
+
+    expect(response.description).toBe('Black Nike backpack with a red keychain.');
+    expect(response.attributes).toEqual({ brand: 'Nike', color: 'black' });
+    expect(JSON.parse(JSON.stringify(response)).attributes).toEqual({
+      brand: 'Nike',
+      color: 'black',
+    });
+  });
+
+  it('uses the string id', () => {
+    const doc = build();
+
+    expect(toPublicDeclarationResponse(doc).id).toBe(String(doc._id));
+  });
+
+  it('keeps the picture of an ordinary category', () => {
+    const response = toPublicDeclarationResponse(build({ picture: 'uploads/9f3c1a.webp' }));
+
+    expect(response.picture).toBe('uploads/9f3c1a.webp');
+  });
+
+  it('hides the picture of a student card, even when one is stored', () => {
+    const response = toPublicDeclarationResponse(
+      build({ category: 'student_card_id', picture: 'uploads/card.webp' }),
+    );
+
+    expect(response.picture).toBeNull();
+    expect(JSON.stringify(response)).not.toContain('card.webp');
+  });
+
+  it('answers null, not undefined, when there is no picture', () => {
+    expect(toPublicDeclarationResponse(build()).picture).toBeNull();
+  });
+
+  it('does not crash on a category it does not know', () => {
+    const response = toPublicDeclarationResponse({
+      _id: new mongoose.Types.ObjectId(),
+      category: 'something_new',
+      picture: 'uploads/x.webp',
+    });
+
+    expect(response.picture).toBe('uploads/x.webp');
+  });
+
+  it('also works on a plain object, such as a lean query result', () => {
+    const _id = new mongoose.Types.ObjectId();
+
+    const response = toPublicDeclarationResponse({
+      _id,
+      title: 'Keys',
+      type: 'found',
+      description: 'A bunch of keys with a blue tag.',
+      category: 'keys',
+      status: 'pending',
+      date: new Date('2026-10-12T00:00:00Z'),
+      location: 'Hall',
+      owner: new mongoose.Types.ObjectId(),
+      privateInfo: 'should never show',
+    });
+
+    expect(response.id).toBe(String(_id));
+    expect(response.attributes).toEqual({});
+    expect(response).not.toHaveProperty('owner');
+    expect(response).not.toHaveProperty('privateInfo');
   });
 });
 
