@@ -7,6 +7,7 @@ export function createDeclarationRoutes({
   createDeclarationSchema,
   listMyDeclarationsQuerySchema,
   declarationIdParamsSchema,
+  updateDeclarationSchema,
 }) {
   const router = Router();
 
@@ -23,6 +24,13 @@ export function createDeclarationRoutes({
   );
 
   router.get('/:id', validate(declarationIdParamsSchema, 'params'), declarationController.getById);
+
+  router.patch(
+    '/:id',
+    validate(declarationIdParamsSchema, 'params'),
+    validate(updateDeclarationSchema),
+    declarationController.update,
+  );
 
   return router;
 }

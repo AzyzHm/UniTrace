@@ -39,5 +39,13 @@ export function createDeclarationController({ declarationService }) {
         ownerDeleted,
       });
     },
+
+    // Only the owner and admins get here (the service refuses the others), so
+    // the full view is the right one, like on the detail route.
+    async update(req, res) {
+      const declaration = await declarationService.update(req.user, req.params.id, req.body);
+
+      res.status(200).json({ declaration: toOwnerDeclarationResponse(declaration) });
+    },
   };
 }
