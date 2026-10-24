@@ -115,7 +115,11 @@ async function start() {
     logger,
   });
 
-  const declarationService = createDeclarationService({ declarationRepository, eventBus });
+  const declarationService = createDeclarationService({
+    declarationRepository,
+    userRepository,
+    eventBus,
+  });
 
   const requireAuth = createRequireAuth({ tokenService, userRepository });
 

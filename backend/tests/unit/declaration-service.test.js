@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { NotFoundError } from '../../src/exceptions/app-error.js';
 import { createDeclarationService } from '../../src/services/declaration.service.js';
 
 const USER = { _id: '507f1f77bcf86cd799439011', role: 'user' };
@@ -19,15 +20,19 @@ function setup({ create } = {}) {
   const declarationRepository = {
     create: create ?? vi.fn(async (data) => ({ _id: SAVED_ID, ...data })),
   };
+  const userRepository = { findById: vi.fn() };
   const eventBus = { emit: vi.fn().mockResolvedValue(undefined) };
-  const service = createDeclarationService({ declarationRepository, eventBus });
+  const service = createDeclarationService({ declarationRepository, userRepository, eventBus });
 
-  return { service, declarationRepository, eventBus };
+  return { service, declarationRepository, userRepository, eventBus };
 }
 
 describe('declaration service, create', () => {
   it('requires its dependencies', () => {
     expect(() => createDeclarationService({})).toThrow(/required/);
+    expect(() => createDeclarationService({ declarationRepository: {}, eventBus: {} })).toThrow(
+      /userRepository/,
+    );
   });
 
   it('saves the user data with the owner from the user and the status pending', async () => {
@@ -112,8 +117,9 @@ describe('declaration service, create', () => {
 describe('declaration service, listMine', () => {
   function setupList(result = { items: [], total: 0 }) {
     const declarationRepository = { findPageByOwner: vi.fn().mockResolvedValue(result) };
+    const userRepository = { findById: vi.fn() };
     const eventBus = { emit: vi.fn() };
-    const service = createDeclarationService({ declarationRepository, eventBus });
+    const service = createDeclarationService({ declarationRepository, userRepository, eventBus });
     return { service, declarationRepository, eventBus };
   }
 
@@ -173,6 +179,213 @@ describe('declaration service, listMine', () => {
     const { service, eventBus } = setupList();
 
     await service.listMine(USER, { page: 1, limit: 20 });
+
+    expect(eventBus.emit).not.toHaveBeenCalled();
+  });
+});
+
+describe('declaration service, getById', () => {
+  const ID = '507f1f77bcf86cd799439055';
+  const OWNER_ID = '507f1f77bcf86cd799439022';
+  const OWNER = { _id: OWNER_ID, role: 'user' };
+  const STRANGER = { _id: '507f1f77bcf86cd799439033', role: 'user' };
+  const ADMIN = { _id: '507f1f77bcf86cd799439044', role: 'admin' };
+
+  const row = (overrides = {}) => ({ _id: ID, owner: OWNER_ID, status: 'pending', ...overrides });
+
+  // "stored" is what the database holds. The public read has no privateInfo,
+  // the full read has it, like the two real repository methods.
+  function setupGet(stored = row(), { ownerAccount = { _id: OWNER_ID, deletedAt: null } } = {}) {
+    const declarationRepository = {
+      findById: vi.fn().mockResolvedValue(stored),
+      findByIdWithPrivateInfo: vi.fn().mockResolvedValue(stored && { ...stored, privateInfo: 'x' }),
+    };
+    const userRepository = { findById: vi.fn().mockResolvedValue(ownerAccount) };
+    const eventBus = { emit: vi.fn() };
+    const service = createDeclarationService({ declarationRepository, userRepository, eventBus });
+
+    return { service, declarationRepository, userRepository, eventBus };
+  }
+
+  const expectNotFound = (promise) =>
+    expect(promise).rejects.toMatchObject({
+      statusCode: 404,
+      code: 'NOT_FOUND',
+      message: 'Declaration not found',
+    });
+
+  describe('what does not exist', () => {
+    it('throws a NotFoundError for an unknown id', async () => {
+      const { service } = setupGet(null);
+
+      await expect(service.getById(OWNER, ID)).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it.each([
+      ['the owner', OWNER],
+      ['an admin', ADMIN],
+      ['a stranger', STRANGER],
+    ])('treats a deleted declaration as missing for %s', async (_who, user) => {
+      const { service, declarationRepository } = setupGet(row({ status: 'deleted' }));
+
+      await expectNotFound(service.getById(user, ID));
+      expect(declarationRepository.findByIdWithPrivateInfo).not.toHaveBeenCalled();
+    });
+
+    it('treats a declaration deleted between the two reads as missing', async () => {
+      const { service, declarationRepository } = setupGet(row());
+      declarationRepository.findByIdWithPrivateInfo.mockResolvedValue(row({ status: 'deleted' }));
+
+      await expectNotFound(service.getById(OWNER, ID));
+    });
+
+    it('treats a declaration that vanished between the two reads as missing', async () => {
+      const { service, declarationRepository } = setupGet(row());
+      declarationRepository.findByIdWithPrivateInfo.mockResolvedValue(null);
+
+      await expectNotFound(service.getById(OWNER, ID));
+    });
+  });
+
+  describe('hidden declarations', () => {
+    it('answers 404, not 403, to a stranger', async () => {
+      const { service } = setupGet(row({ status: 'hidden' }));
+
+      await expectNotFound(service.getById(STRANGER, ID));
+    });
+
+    it('does not even look at the owner account for a stranger', async () => {
+      const { service, userRepository } = setupGet(row({ status: 'hidden' }));
+
+      await expectNotFound(service.getById(STRANGER, ID));
+      expect(userRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('still shows it to its owner', async () => {
+      const { service } = setupGet(row({ status: 'hidden' }));
+
+      const result = await service.getById(OWNER, ID);
+
+      expect(result.declaration.status).toBe('hidden');
+      expect(result.canSeePrivate).toBe(true);
+    });
+
+    it('still shows it to an admin', async () => {
+      const { service } = setupGet(row({ status: 'hidden' }));
+
+      const result = await service.getById(ADMIN, ID);
+
+      expect(result.declaration.status).toBe('hidden');
+      expect(result.canSeePrivate).toBe(true);
+    });
+  });
+
+  describe('a stranger', () => {
+    it.each(['pending', 'matched', 'resolved', 'expired'])(
+      'reads a %s declaration, public part only',
+      async (status) => {
+        const { service } = setupGet(row({ status }));
+
+        const result = await service.getById(STRANGER, ID);
+
+        expect(result).toMatchObject({ isOwner: false, canSeePrivate: false });
+        expect(result.declaration.status).toBe(status);
+      },
+    );
+
+    it('never loads the private info', async () => {
+      const { service, declarationRepository } = setupGet();
+
+      const result = await service.getById(STRANGER, ID);
+
+      expect(declarationRepository.findById).toHaveBeenCalledWith(ID);
+      expect(declarationRepository.findByIdWithPrivateInfo).not.toHaveBeenCalled();
+      expect(result.declaration).not.toHaveProperty('privateInfo');
+    });
+
+    it('is not told the owner is deleted while the account is alive', async () => {
+      const { service, userRepository } = setupGet();
+
+      const result = await service.getById(STRANGER, ID);
+
+      expect(userRepository.findById).toHaveBeenCalledWith(OWNER_ID);
+      expect(result.ownerDeleted).toBe(false);
+    });
+
+    it('is told the owner is deleted once the account is anonymized', async () => {
+      const { service } = setupGet(row({ status: 'resolved' }), {
+        ownerAccount: { _id: OWNER_ID, deletedAt: new Date() },
+      });
+
+      const result = await service.getById(STRANGER, ID);
+
+      expect(result.ownerDeleted).toBe(true);
+    });
+
+    it('counts an owner account that cannot be found as deleted', async () => {
+      const { service } = setupGet(row(), { ownerAccount: null });
+
+      const result = await service.getById(STRANGER, ID);
+
+      expect(result.ownerDeleted).toBe(true);
+    });
+  });
+
+  describe('the owner', () => {
+    it('gets the private info through the second read', async () => {
+      const { service, declarationRepository } = setupGet();
+
+      const result = await service.getById(OWNER, ID);
+
+      expect(declarationRepository.findByIdWithPrivateInfo).toHaveBeenCalledWith(ID);
+      expect(result).toMatchObject({ isOwner: true, canSeePrivate: true });
+      expect(result.declaration.privateInfo).toBe('x');
+    });
+
+    it('compares the owner as text, whatever the type of the ids', async () => {
+      const { service } = setupGet(row({ owner: { toString: () => OWNER_ID } }));
+
+      const result = await service.getById(OWNER, ID);
+
+      expect(result.isOwner).toBe(true);
+    });
+
+    it('is never an owner whose account is deleted, so no user lookup is made', async () => {
+      const { service, userRepository } = setupGet();
+
+      const result = await service.getById(OWNER, ID);
+
+      expect(result.ownerDeleted).toBe(false);
+      expect(userRepository.findById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('an admin', () => {
+    it('gets the private info without being the owner', async () => {
+      const { service, declarationRepository } = setupGet();
+
+      const result = await service.getById(ADMIN, ID);
+
+      expect(declarationRepository.findByIdWithPrivateInfo).toHaveBeenCalledWith(ID);
+      expect(result).toMatchObject({ isOwner: false, canSeePrivate: true });
+    });
+
+    it('is told when the owner is deleted', async () => {
+      const { service } = setupGet(row({ status: 'matched' }), {
+        ownerAccount: { _id: OWNER_ID, deletedAt: new Date() },
+      });
+
+      const result = await service.getById(ADMIN, ID);
+
+      expect(result.ownerDeleted).toBe(true);
+    });
+  });
+
+  it('announces nothing, a read changes nothing', async () => {
+    const { service, eventBus } = setupGet();
+
+    await service.getById(OWNER, ID);
+    await service.getById(STRANGER, ID);
 
     expect(eventBus.emit).not.toHaveBeenCalled();
   });

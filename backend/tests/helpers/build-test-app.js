@@ -94,7 +94,11 @@ export function buildTestApp() {
       eventBus,
       clock,
     }),
-    declarationService: createDeclarationService({ declarationRepository, eventBus }),
+    declarationService: createDeclarationService({
+      declarationRepository,
+      userRepository,
+      eventBus,
+    }),
     requireAuth: createRequireAuth({ tokenService, userRepository }),
     allowedEmailDomains: ['isamm.uma.tn'],
   });
